@@ -17,6 +17,9 @@ const UIState = {
         }
     },
 
+    // Persists partner income when switching away from "married"
+    _savedPartnerIncome: null,
+
     /**
      * Handle status toggle (Alleinstehend ↔ Verheiratet)
      * Works with either the old two-card layout or the new single toggle button
@@ -53,12 +56,15 @@ const UIState = {
         if (status === 'married') {
             income2Group.style.display = 'block';
 
-            // Set defaults for married (only if at single defaults)
-            if (parseFloat(partnerIncomeInput.value) === 0) {
-                partnerIncomeInput.value = this.defaults.married.partnerIncome;
-                const slider = document.getElementById('partnerIncomeSlider');
-                if (slider) slider.value = this.defaults.married.partnerIncome;
-            }
+            // Restore saved partner income (or use default if first switch)
+            const restoreValue = this._savedPartnerIncome !== null
+                ? this._savedPartnerIncome
+                : this.defaults.married.partnerIncome;
+            partnerIncomeInput.value = restoreValue;
+            const partnerSlider = document.getElementById('partnerIncomeSlider');
+            if (partnerSlider) partnerSlider.value = restoreValue;
+
+            // Adjust housing defaults when switching from single
             if (parseFloat(housingCostInput.value) === this.defaults.single.rent) {
                 housingCostInput.value = this.defaults.married.rent;
                 const slider = document.getElementById('housingCostSlider');
@@ -70,6 +76,12 @@ const UIState = {
                 if (slider) slider.value = this.defaults.married.apartmentSize;
             }
         } else {
+            // Save the current partner income before hiding
+            const currentPartnerIncome = parseFloat(partnerIncomeInput.value) || 0;
+            if (currentPartnerIncome > 0) {
+                this._savedPartnerIncome = currentPartnerIncome;
+            }
+
             income2Group.style.display = 'none';
             partnerIncomeInput.value = 0;
             const partnerSlider = document.getElementById('partnerIncomeSlider');
