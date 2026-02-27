@@ -187,19 +187,22 @@ const UIState = {
     },
 
     /**
-     * Update housing cost label based on housing type
+     * Update housing cost label & hint based on housing type dropdown
+     * Options: rent | owned | loan
      */
     updateHousingLabel(type) {
-        const label = document.querySelector('label[for="housingCost"]');
-        if (!label) return;
+        const labelSpan = document.getElementById('housingCostLabel');
+        const hint = document.querySelector('#housingCostGroup .input-hint');
 
-        const labels = {
-            'rent': 'Monatliche Miete (Hauptmietzins)',
-            'coop': 'Monatliche Miete (Genossenschaft)',
-            'own': 'Monatliche Kreditrate'
+        const config = {
+            'rent': { label: 'Miete', hint: 'Hauptmietzins ohne Betriebskosten' },
+            'owned': { label: 'Wohnnebenkosten', hint: 'Monatliche Betriebskosten (ohne Kredit)' },
+            'loan': { label: 'Kreditrate + Nebenkosten', hint: 'Monatliche Kreditrate inkl. Betriebskosten' },
         };
 
-        label.textContent = labels[type] || labels['rent'];
+        const cfg = config[type] || config['rent'];
+        if (labelSpan) labelSpan.textContent = cfg.label;
+        if (hint) hint.textContent = cfg.hint;
     }
 };
 
