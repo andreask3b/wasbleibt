@@ -195,8 +195,101 @@ input[type="number"] {
 }
 
 /* ===========================
-   Status Toggle Cards
+   Input Blocks (3-block layout: Familienstand, Einkommen, Wohnen)
    =========================== */
+.input-block {
+    margin-bottom: var(--spacing-xl);
+    padding-bottom: var(--spacing-xl);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.input-block:last-of-type {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.block-label {
+    font-size: var(--font-size-sm);
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: var(--spacing-md);
+}
+
+/* ===========================
+   Status Row (Alleinstehend / Verheiratet)
+   =========================== */
+.status-row {
+    display: flex;
+    gap: var(--spacing-md);
+    align-items: stretch;
+    margin-bottom: var(--spacing-md);
+}
+
+/* ===========================
+   Children Row (label + counter inline)
+   =========================== */
+.children-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-sm);
+}
+
+.children-row-label {
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    color: var(--text-secondary);
+    min-width: 80px;
+}
+
+/* Override child-counter for inline row layout */
+.children-row .child-counter {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    min-width: auto;
+    width: auto;
+    justify-content: center;
+}
+
+.children-row .child-btn {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    font-size: var(--font-size-xl);
+    line-height: 1;
+}
+
+.children-row .child-count {
+    font-size: var(--font-size-xl);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    min-width: 28px;
+    text-align: center;
+    color: var(--text-primary);
+}
+
+
+/* Children detail (age cards, collapsible) */
+.children-detail {
+    margin-top: var(--spacing-md);
+}
+
+/* Legacy compat */
 .status-toggle-group {
     margin-bottom: var(--spacing-xl);
 }
@@ -206,13 +299,6 @@ input[type="number"] {
     font-size: var(--font-size-sm);
     font-weight: 600;
     color: var(--text-primary);
-    margin-bottom: var(--spacing-md);
-}
-
-.status-row {
-    display: flex;
-    gap: var(--spacing-md);
-    align-items: stretch;
     margin-bottom: var(--spacing-md);
 }
 
@@ -230,6 +316,7 @@ input[type="number"] {
 .bundesland-row select {
     width: calc(33.33% - var(--spacing-md));
 }
+
 
 /* Mobile Responsive: Status Row */
 @media (max-width: 600px) {
@@ -570,8 +657,10 @@ input[type="number"] {
     padding-left: var(--spacing-lg);
 }
 
+/* Missing closing brace added here */
 .radio-label {
     display: flex;
     align-items: center;
     gap: var(--spacing-xs);
     cursor: pointer;
+}

@@ -86,13 +86,15 @@
                 </div>
             </section>
 
+
             <!-- Input Section -->
             <section class="input-section glass-card">
                 <h2>Ihre Situation</h2>
 
-                <!-- Family Status + Kind -->
-                <div class="status-toggle-group">
-                    <label class="toggle-label">Ich bin:</label>
+                <!-- Block 1: Wer bist du? -->
+                <div class="input-block">
+                    <div class="block-label">🧑 Familienstand</div>
+
                     <div class="status-row">
                         <button type="button" class="status-card active" data-status="single" id="statusSingle">
                             <svg class="status-icon" viewBox="0 0 64 64" fill="currentColor">
@@ -110,35 +112,36 @@
                             </svg>
                             <span class="status-text">Verheiratet</span>
                         </button>
+                    </div>
+
+                    <!-- Children counter — directly under status -->
+                    <div class="children-row">
+                        <div class="children-row-label">
+                            <span>👶 Kinder</span>
+                        </div>
                         <div class="child-counter" id="childCounter">
-                            <span class="child-icon">👶</span>
+                            <button type="button" class="child-btn minus" id="removeChildBtn">−</button>
                             <span class="child-count" id="childCount">0</span>
-                            <div class="child-buttons">
-                                <button type="button" class="child-btn plus" id="addChildBtnTop">+</button>
-                                <button type="button" class="child-btn minus" id="removeChildBtn">−</button>
-                            </div>
+                            <button type="button" class="child-btn plus" id="addChildBtnTop">+</button>
                         </div>
                     </div>
-                    <div class="bundesland-row">
-                        <label for="federalState">📍 Bundesland</label>
-                        <select id="federalState">
-                            <option value="vienna" selected>Wien</option>
-                            <option value="burgenland">Burgenland</option>
-                            <option value="carinthia">Kärnten</option>
-                            <option value="lowerAustria">Niederösterreich</option>
-                            <option value="upperAustria">Oberösterreich</option>
-                            <option value="salzburg">Salzburg</option>
-                            <option value="steiermark">Steiermark</option>
-                            <option value="tyrol">Tirol</option>
-                            <option value="vorarlberg">Vorarlberg</option>
-                        </select>
+
+                    <!-- Children details (age inputs, shown when children > 0) -->
+                    <div class="children-detail" id="childrenSection" style="display: none;">
+                        <div class="children-container" id="childrenContainer">
+                            <!-- Children will be added dynamically -->
+                        </div>
                     </div>
                 </div>
 
-                <!-- Income Section -->
-                <div class="income-section">
+                <!-- Block 2: Einkommen -->
+                <div class="input-block">
+                    <div class="block-label">💶 Einkommen</div>
+
+                    <!-- Hidden legacy field for compatibility -->
+                    <input type="hidden" id="familyStatus" value="single">
+
                     <div class="income-header">
-                        <label class="toggle-label">Mein Einkommen</label>
                         <div class="period-toggle">
                             <label class="period-option">
                                 <input type="radio" name="incomePeriod" value="monthly" checked>
@@ -182,81 +185,82 @@
                     </div>
                 </div>
 
-                <!-- Hidden legacy field for compatibility -->
-                <input type="hidden" id="familyStatus" value="single">
+                <!-- Block 3: Wohnen -->
+                <div class="input-block">
+                    <div class="block-label">🏠 Wohnen</div>
 
-                <div class="form-grid">
-                    <!-- Children (shown only when children exist) -->
-                    <div class="form-group full-width children-section" id="childrenSection" style="display: none;">
-                        <label>👶 Kinder</label>
-                        <div class="children-container" id="childrenContainer">
-                            <!-- Children will be added dynamically -->
+                    <div class="form-grid">
+                        <!-- Housing type -->
+                        <div class="form-group">
+                            <label for="housingType">Wohnsituation</label>
+                            <select id="housingType">
+                                <option value="rent">Miete</option>
+                                <option value="owned">Eigentum (ohne Kredit)</option>
+                                <option value="loan">Eigentum (mit Kredit)</option>
+                            </select>
                         </div>
-                    </div>
 
-                    <!-- Housing -->
-                    <div class="form-group">
-                        <label for="housingType">
-                            <span class="label-icon">🏠</span>
-                            Wohnsituation
-                        </label>
-                        <select id="housingType">
-                            <option value="rent">Miete</option>
-                            <option value="owned">Eigentum (ohne Kredit)</option>
-                            <option value="loan">Eigentum (mit Kredit)</option>
-                        </select>
-                        <small class="input-hint">&nbsp;</small>
-                    </div>
+                        <!-- Bundesland — next to housing type -->
+                        <div class="form-group">
+                            <label for="federalState">📍 Bundesland</label>
+                            <select id="federalState">
+                                <option value="vienna" selected>Wien</option>
+                                <option value="burgenland">Burgenland</option>
+                                <option value="carinthia">Kärnten</option>
+                                <option value="lowerAustria">Niederösterreich</option>
+                                <option value="upperAustria">Oberösterreich</option>
+                                <option value="salzburg">Salzburg</option>
+                                <option value="steiermark">Steiermark</option>
+                                <option value="tyrol">Tirol</option>
+                                <option value="vorarlberg">Vorarlberg</option>
+                            </select>
+                        </div>
 
-                    <!-- Rent/Loan Amount -->
-                    <div class="form-group" id="housingCostGroup">
-                        <label for="housingCost">
-                            <span class="label-icon">💸</span>
-                            <span id="housingCostLabel">Miete</span>
-                        </label>
-                        <div class="slider-wrapper">
-                            <input type="range" id="housingCostSlider" min="0" max="3000" step="50" value="700"
-                                class="range-slider">
-                            <div class="input-wrapper slider-input">
-                                <input type="number" id="housingCost" min="0" max="3000" step="50" value="700"
-                                    placeholder="700">
-                                <span class="input-suffix">€</span>
+                        <!-- Rent/Loan Amount -->
+                        <div class="form-group" id="housingCostGroup">
+                            <label for="housingCost">
+                                💸 <span id="housingCostLabel">Miete</span>
+                            </label>
+                            <div class="slider-wrapper">
+                                <input type="range" id="housingCostSlider" min="0" max="3000" step="50" value="700"
+                                    class="range-slider">
+                                <div class="input-wrapper slider-input">
+                                    <input type="number" id="housingCost" min="0" max="3000" step="50" value="700"
+                                        placeholder="700">
+                                    <span class="input-suffix">€</span>
+                                </div>
+                            </div>
+                            <small class="input-hint">Hauptmietzins ohne Betriebskosten</small>
+                        </div>
+
+                        <!-- Apartment Size -->
+                        <div class="form-group">
+                            <label for="apartmentSize">📐 Wohnfläche</label>
+                            <div class="slider-wrapper">
+                                <input type="range" id="apartmentSizeSlider" min="20" max="300" step="5" value="60"
+                                    class="range-slider">
+                                <div class="input-wrapper slider-input">
+                                    <input type="number" id="apartmentSize" min="20" max="300" step="5" value="60"
+                                        placeholder="60">
+                                    <span class="input-suffix">m²</span>
+                                </div>
                             </div>
                         </div>
-                        <small class="input-hint">Hauptmietzins ohne Betriebskosten</small>
-                    </div>
 
-                    <!-- Apartment Size -->
-                    <div class="form-group">
-                        <label for="apartmentSize">
-                            <span class="label-icon">📐</span>
-                            Wohnfläche
-                        </label>
-                        <div class="slider-wrapper">
-                            <input type="range" id="apartmentSizeSlider" min="20" max="300" step="5" value="60"
-                                class="range-slider">
-                            <div class="input-wrapper slider-input">
-                                <input type="number" id="apartmentSize" min="20" max="300" step="5" value="60"
-                                    placeholder="60">
-                                <span class="input-suffix">m²</span>
-                            </div>
+                        <!-- Wiedereinsteiger Freibetrag -->
+                        <div class="form-group full-width">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="wiedereinsteiger">
+                                <span class="checkbox-text">
+                                    <span class="label-icon">🔄</span>
+                                    Wiedereinsteiger:in (gerade Arbeit aufgenommen)
+                                </span>
+                            </label>
+                            <small class="input-hint">
+                                Bei Wiedereinstieg: 35% Freibetrag auf Nettoeinkommen für max. 12 Monate
+                                (<a href="armutsfalle.html">Mehr zur Armutsfalle</a>)
+                            </small>
                         </div>
-                        <small class="input-hint">&nbsp;</small>
-                    </div>
-
-                    <!-- Wiedereinsteiger Freibetrag -->
-                    <div class="form-group full-width">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="wiedereinsteiger">
-                            <span class="checkbox-text">
-                                <span class="label-icon">🔄</span>
-                                Wiedereinsteiger:in (gerade Arbeit aufgenommen)
-                            </span>
-                        </label>
-                        <small class="input-hint">
-                            Bei Wiedereinstieg: 35% Freibetrag auf Nettoeinkommen für max. 12 Monate
-                            (<a href="armutsfalle.html">Mehr zur Armutsfalle</a>)
-                        </small>
                     </div>
                 </div>
             </section>
