@@ -191,8 +191,8 @@
                 <div class="input-block">
                     <div class="block-label">🏠 Wohnen</div>
 
-                    <div class="form-grid">
-                        <!-- Housing type -->
+                    <div class="form-grid form-grid-2col">
+                        <!-- Row 1: Dropdowns side by side -->
                         <div class="form-group">
                             <label for="housingType">Wohnsituation</label>
                             <select id="housingType">
@@ -202,7 +202,6 @@
                             </select>
                         </div>
 
-                        <!-- Bundesland — next to housing type -->
                         <div class="form-group">
                             <label for="federalState">📍 Bundesland</label>
                             <select id="federalState">
@@ -218,11 +217,9 @@
                             </select>
                         </div>
 
-                        <!-- Rent/Loan Amount -->
-                        <div class="form-group" id="housingCostGroup">
-                            <label for="housingCost">
-                                💸 <span id="housingCostLabel">Miete</span>
-                            </label>
+                        <!-- Row 2: Sliders stacked, full width -->
+                        <div class="form-group full-width" id="housingCostGroup">
+                            <label for="housingCost">💸 <span id="housingCostLabel">Miete</span></label>
                             <div class="slider-wrapper">
                                 <input type="range" id="housingCostSlider" min="0" max="3000" step="50" value="700"
                                     class="range-slider">
@@ -235,9 +232,9 @@
                             <small class="input-hint">Hauptmietzins ohne Betriebskosten</small>
                         </div>
 
-                        <!-- Apartment Size -->
-                        <div class="form-group">
-                            <label for="apartmentSize">📐 Wohnfläche</label>
+                        <div class="form-group full-width">
+                            <label for="apartmentSize">📐 Wohnfläche <small
+                                    style="font-weight:400; color:var(--text-muted)">(für Wohnbeihilfe)</small></label>
                             <div class="slider-wrapper">
                                 <input type="range" id="apartmentSizeSlider" min="20" max="300" step="5" value="60"
                                     class="range-slider">
@@ -249,17 +246,16 @@
                             </div>
                         </div>
 
-                        <!-- Wiedereinsteiger Freibetrag -->
+                        <!-- Wiedereinsteiger (default off — no checked attribute) -->
                         <div class="form-group full-width">
                             <label class="checkbox-label">
                                 <input type="checkbox" id="wiedereinsteiger">
                                 <span class="checkbox-text">
-                                    <span class="label-icon">🔄</span>
-                                    Wiedereinsteiger:in (gerade Arbeit aufgenommen)
+                                    🔄 Wiedereinsteiger:in (gerade Arbeit aufgenommen)
                                 </span>
                             </label>
                             <small class="input-hint">
-                                Bei Wiedereinstieg: 35% Freibetrag auf Nettoeinkommen für max. 12 Monate
+                                35% Freibetrag auf Nettoeinkommen für max. 12 Monate
                                 (<a href="armutsfalle.html">Mehr zur Armutsfalle</a>)
                             </small>
                         </div>

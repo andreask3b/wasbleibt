@@ -107,8 +107,15 @@
     margin-bottom: var(--spacing-xl);
 }
 
+/* 2-column variant (e.g. Wohnen block: 2 dropdowns + full-width sliders) */
+.form-grid-2col {
+    grid-template-columns: repeat(2, 1fr);
+}
+
 @media (max-width: 768px) {
-    .form-grid {
+
+    .form-grid,
+    .form-grid-2col {
         grid-template-columns: 1fr;
     }
 }
