@@ -1,6 +1,7 @@
 /**
  * Children Management Module
  * Handles adding, removing, and rendering children
+ * Childcare: 3-state toggle — none / half-day / full-day
  */
 
 const ChildrenManager = {
@@ -15,15 +16,15 @@ const ChildrenManager = {
         this.children.push({
             id,
             age,
-            inChildcare: false,
-            fullDay: false
+            inChildcare: false,   // legacy compat
+            fullDay: false,        // legacy compat
+            careMode: 'none'       // 'none' | 'half' | 'full'
         });
         this.renderChildren();
     },
 
     /**
-     * Remove a child from the list
-     * @param {number} id - Child ID
+     * Remove a child by ID
      */
     removeChild(id) {
         this.children = this.children.filter(c => c.id !== id);
@@ -33,7 +34,7 @@ const ChildrenManager = {
     },
 
     /**
-     * Remove the last child from the list (for - button)
+     * Remove the last child (for − button)
      */
     removeLastChild() {
         if (this.children.length > 0) {
@@ -50,13 +51,8 @@ const ChildrenManager = {
         const countEl = document.getElementById('childCount');
         const sectionEl = document.getElementById('childrenSection');
 
-        if (countEl) {
-            countEl.textContent = this.children.length;
-        }
-
-        if (sectionEl) {
-            sectionEl.style.display = this.children.length > 0 ? 'block' : 'none';
-        }
+        if (countEl) countEl.textContent = this.children.length;
+        if (sectionEl) sectionEl.style.display = this.children.length > 0 ? 'block' : 'none';
     },
 
     /**
@@ -70,26 +66,33 @@ const ChildrenManager = {
     },
 
     /**
-     * Update childcare status
+     * Set childcare mode: 'none' | 'half' | 'full'
+     * Updates legacy inChildcare/fullDay flags for backward compat with benefits.js
      */
-    updateChildcare(id, inChildcare) {
+    setCareMode(id, mode) {
         const child = this.children.find(c => c.id === id);
-        if (child) {
-            child.inChildcare = inChildcare;
-            if (!inChildcare) {
-                child.fullDay = false;
-            }
-        }
+        if (!child) return;
+        child.careMode = mode;
+        child.inChildcare = mode !== 'none';
+        child.fullDay = mode === 'full';
         this.renderChildren();
+        if (typeof FormManager !== 'undefined') FormManager.calculate();
     },
 
     /**
-     * Update childcare type
+     * Legacy compat: updateChildcare(id, bool)
+     */
+    updateChildcare(id, inChildcare) {
+        this.setCareMode(id, inChildcare ? 'half' : 'none');
+    },
+
+    /**
+     * Legacy compat: updateChildcareType(id, bool)
      */
     updateChildcareType(id, fullDay) {
         const child = this.children.find(c => c.id === id);
-        if (child) {
-            child.fullDay = fullDay;
+        if (child && child.inChildcare) {
+            this.setCareMode(id, fullDay ? 'full' : 'half');
         }
     },
 
@@ -101,71 +104,52 @@ const ChildrenManager = {
     },
 
     /**
-     * Get all children data
+     * Get all children data (with legacy fields for benefits.js)
      */
     getChildren() {
         return this.children;
     },
 
     /**
-     * Render children list in the DOM
+     * Render children as compact inline chips
      */
     renderChildren() {
         const container = document.getElementById('childrenContainer');
         if (!container) return;
 
+        const careModes = [
+            { value: 'none', label: 'Keine', emoji: '🏠' },
+            { value: 'half', label: 'Halbtags', emoji: '☀️' },
+            { value: 'full', label: 'Ganztags', emoji: '🌟' }
+        ];
+
         container.innerHTML = this.children.map((child, index) => `
-            <div class="child-card" data-id="${child.id}">
-                <div class="child-card-header">
-                    <span class="child-label">Kind ${index + 1}</span>
-                    <input 
-                        type="number" 
-                        min="0" 
-                        max="25" 
-                        value="${child.age}" 
-                        placeholder="Alter"
+            <div class="child-chip" data-id="${child.id}">
+                <span class="child-chip-label">Kind ${index + 1}</span>
+                <div class="child-chip-age">
+                    <input
+                        type="number"
+                        min="0"
+                        max="25"
+                        value="${child.age}"
+                        placeholder="5"
                         onchange="ChildrenManager.updateChildAge(${child.id}, this.value); FormManager.calculate();"
                         class="child-age-input"
+                        title="Alter"
                     >
-                    <span>Jahre</span>
-                    <button type="button" class="child-remove" onclick="ChildrenManager.removeChild(${child.id})" title="Kind entfernen">
-                        ×
-                    </button>
+                    <span class="child-age-suffix">J</span>
                 </div>
-                <div class="child-card-options">
-                    <label class="childcare-checkbox">
-                        <input 
-                            type="checkbox" 
-                            ${child.inChildcare ? 'checked' : ''}
-                            onchange="ChildrenManager.updateChildcare(${child.id}, this.checked); FormManager.calculate();"
-                        >
-                        In Kinderbetreuung
-                    </label>
-                    ${child.inChildcare ? `
-                        <div class="childcare-type">
-                            <label class="radio-label">
-                                <input 
-                                    type="radio" 
-                                    name="childcare-${child.id}" 
-                                    value="half"
-                                    ${!child.fullDay ? 'checked' : ''}
-                                    onchange="ChildrenManager.updateChildcareType(${child.id}, false); FormManager.calculate();"
-                                >
-                                Halbtag
-                            </label>
-                            <label class="radio-label">
-                                <input 
-                                    type="radio" 
-                                    name="childcare-${child.id}" 
-                                    value="full"
-                                    ${child.fullDay ? 'checked' : ''}
-                                    onchange="ChildrenManager.updateChildcareType(${child.id}, true); FormManager.calculate();"
-                                >
-                                Ganztag
-                            </label>
-                        </div>
-                    ` : ''}
+                <div class="care-toggle" role="group" aria-label="Kinderbetreuung">
+                    ${careModes.map(m => `
+                        <button
+                            type="button"
+                            class="care-btn${child.careMode === m.value ? ' active' : ''}"
+                            onclick="ChildrenManager.setCareMode(${child.id}, '${m.value}')"
+                            title="${m.label}"
+                        >${m.emoji} <span class="care-btn-text">${m.label}</span></button>
+                    `).join('')}
                 </div>
+                <button type="button" class="child-remove-btn" onclick="ChildrenManager.removeChild(${child.id})" title="Entfernen">×</button>
             </div>
         `).join('');
     }

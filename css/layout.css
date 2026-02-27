@@ -661,62 +661,135 @@ input[type="number"] {
 }
 
 
-/* Children Container */
+/* ===========================
+   Children Container & Chips
+   =========================== */
 .children-container {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-md);
-}
-
-.child-card {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-sm);
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    padding: var(--spacing-md);
-    font-size: var(--font-size-sm);
+    margin-top: var(--spacing-sm);
 }
 
-.child-card-header {
+/* Compact chip: label | age | care-toggle | remove */
+.child-chip {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-xs) var(--spacing-md);
+    flex-wrap: wrap;
 }
 
-.child-label {
-    font-weight: 600;
-    color: var(--text-primary);
-    min-width: 50px;
+.child-chip-label {
+    font-size: var(--font-size-xs);
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    min-width: 48px;
+    flex-shrink: 0;
+}
+
+/* Age input wrapper */
+.child-chip-age {
+    display: flex;
+    align-items: center;
+    gap: 2px;
 }
 
 .child-age-input {
-    width: 60px;
-    padding: var(--spacing-sm);
+    width: 44px;
+    height: 32px;
+    padding: 0 var(--spacing-xs);
     text-align: center;
     font-size: var(--font-size-sm);
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
 }
 
-.child-card-options {
+.child-age-suffix {
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+}
+
+/* 3-state care toggle group */
+.care-toggle {
     display: flex;
-    flex-direction: column;
-    gap: var(--spacing-sm);
-    padding-left: var(--spacing-md);
+    gap: 2px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    flex-shrink: 0;
 }
 
-.childcare-checkbox {
+.care-btn {
     display: flex;
     align-items: center;
-    gap: var(--spacing-sm);
+    gap: 3px;
+    padding: 4px 8px;
+    border: none;
+    background: transparent;
     cursor: pointer;
-    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    color: var(--text-muted);
+    font-family: inherit;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+    line-height: 1.4;
 }
 
-.childcare-checkbox input[type="checkbox"] {
-    width: auto;
+.care-btn:hover {
+    background: rgba(29, 155, 240, 0.1);
+    color: var(--text-primary);
+}
+
+.care-btn.active {
+    background: var(--accent-primary);
+    color: #fff;
+    font-weight: 700;
+}
+
+.care-btn-text {
+    /* Hide text on narrow screens, show on wider */
+    display: none;
+}
+
+@media (min-width: 500px) {
+    .care-btn-text {
+        display: inline;
+    }
+}
+
+/* Remove button on chip */
+.child-remove-btn {
+    margin-left: auto;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 1.1rem;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition-fast);
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.child-remove-btn:hover {
+    background: rgba(183, 28, 28, 0.1);
+    color: var(--austria-red);
 }
 
 /* Checkbox label (for standalone checkboxes like Wiedereinsteiger) */
@@ -740,12 +813,6 @@ input[type="number"] {
     display: flex;
     align-items: center;
     gap: var(--spacing-sm);
-}
-
-.childcare-type {
-    display: flex;
-    gap: var(--spacing-lg);
-    padding-left: var(--spacing-lg);
 }
 
 /* Missing closing brace added here */
