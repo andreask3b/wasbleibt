@@ -8,7 +8,15 @@ const FormManager = {
      * Initialize form and all modules
      */
     init() {
-        // Initialize UI event listeners via UIState
+        // New single toggle button (Alleinstehend ↔ Verheiratet)
+        document.getElementById('statusToggleBtn')?.addEventListener('click', (e) => {
+            const btn = e.currentTarget;
+            const current = btn.dataset.status || 'single';
+            const next = current === 'single' ? 'married' : 'single';
+            UIState.handleStatusToggle(next);
+        });
+
+        // Legacy two-card layout (backward compat)
         document.querySelectorAll('.status-card').forEach(card => {
             card.addEventListener('click', () => {
                 UIState.handleStatusToggle(card.dataset.status);
@@ -16,7 +24,7 @@ const FormManager = {
         });
 
         // Period toggle
-        document.querySelectorAll('[name="period"]').forEach(radio => {
+        document.querySelectorAll('[name="incomePeriod"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
                 UIState.handlePeriodToggle(e.target.value);
             });

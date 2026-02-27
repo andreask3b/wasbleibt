@@ -91,35 +91,31 @@
             <section class="input-section glass-card">
                 <h2>Ihre Situation</h2>
 
-                <!-- Block 1: Wer bist du? -->
+                <!-- Block 1: Familienstand & Kinder -->
                 <div class="input-block">
-                    <div class="block-label">🧑 Familienstand</div>
+                    <div class="block-label">🧑 Familienstand & Kinder</div>
 
-                    <div class="status-row">
-                        <button type="button" class="status-card active" data-status="single" id="statusSingle">
-                            <svg class="status-icon" viewBox="0 0 64 64" fill="currentColor">
+                    <!-- Compact single row: toggle + children counter -->
+                    <div class="status-children-row">
+                        <!-- Single toggle button -->
+                        <button type="button" class="status-toggle-btn" id="statusToggleBtn" data-status="single">
+                            <svg class="toggle-icon toggle-icon-single" viewBox="0 0 64 64" fill="currentColor">
                                 <circle cx="32" cy="20" r="12" />
                                 <path d="M16 56c0-13 7-20 16-20s16 7 16 20" />
                             </svg>
-                            <span class="status-text">Alleinstehend</span>
-                        </button>
-                        <button type="button" class="status-card" data-status="married" id="statusMarried">
-                            <svg class="status-icon" viewBox="0 0 64 64" fill="currentColor">
+                            <svg class="toggle-icon toggle-icon-married" viewBox="0 0 64 64" fill="currentColor"
+                                style="display:none">
                                 <circle cx="22" cy="20" r="10" />
                                 <circle cx="42" cy="20" r="10" />
                                 <path d="M8 56c0-11 6-17 14-17s14 6 14 17" />
                                 <path d="M28 56c0-11 6-17 14-17s14 6 14 17" />
                             </svg>
-                            <span class="status-text">Verheiratet</span>
+                            <span class="toggle-label-text">Alleinstehend</span>
                         </button>
-                    </div>
 
-                    <!-- Children counter — directly under status -->
-                    <div class="children-row">
-                        <div class="children-row-label">
-                            <span>👶 Kinder</span>
-                        </div>
-                        <div class="child-counter" id="childCounter">
+                        <!-- Children stepper -->
+                        <div class="children-stepper">
+                            <span class="children-stepper-label">👶</span>
                             <button type="button" class="child-btn minus" id="removeChildBtn">−</button>
                             <span class="child-count" id="childCount">0</span>
                             <button type="button" class="child-btn plus" id="addChildBtnTop">+</button>
@@ -132,14 +128,20 @@
                             <!-- Children will be added dynamically -->
                         </div>
                     </div>
+
+                    <!-- Hidden fields -->
+                    <input type="hidden" id="familyStatus" value="single">
+                    <!-- Legacy IDs for backward compat (hidden) -->
+                    <span id="statusSingle" data-status="single" style="display:none"></span>
+                    <span id="statusMarried" data-status="married" style="display:none"></span>
+                    <div id="childCounter" style="display:none"></div>
                 </div>
+
 
                 <!-- Block 2: Einkommen -->
                 <div class="input-block">
                     <div class="block-label">💶 Einkommen</div>
 
-                    <!-- Hidden legacy field for compatibility -->
-                    <input type="hidden" id="familyStatus" value="single">
 
                     <div class="income-header">
                         <div class="period-toggle">

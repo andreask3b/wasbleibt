@@ -18,17 +18,31 @@ const UIState = {
     },
 
     /**
-     * Handle status card toggle (Alleinstehend / Verheiratet)
+     * Handle status toggle (Alleinstehend ↔ Verheiratet)
+     * Works with either the old two-card layout or the new single toggle button
      */
     handleStatusToggle(status) {
-        // Update visual state
-        document.querySelectorAll('.status-card').forEach(card => {
-            card.classList.remove('active');
-        });
-        document.querySelector(`[data-status="${status}"]`)?.classList.add('active');
-
         // Update hidden field
         document.getElementById('familyStatus').value = status;
+
+        // Update legacy two-card layout (if present)
+        document.querySelectorAll('.status-card').forEach(card => {
+            card.classList.toggle('active', card.dataset.status === status);
+        });
+
+        // Update new single toggle button
+        const toggleBtn = document.getElementById('statusToggleBtn');
+        if (toggleBtn) {
+            toggleBtn.dataset.status = status;
+            const isMarried = status === 'married';
+            const iconSingle = toggleBtn.querySelector('.toggle-icon-single');
+            const iconMarried = toggleBtn.querySelector('.toggle-icon-married');
+            const labelEl = toggleBtn.querySelector('.toggle-label-text');
+            if (iconSingle) iconSingle.style.display = isMarried ? 'none' : '';
+            if (iconMarried) iconMarried.style.display = isMarried ? '' : 'none';
+            if (labelEl) labelEl.textContent = isMarried ? 'Verheiratet' : 'Alleinstehend';
+            toggleBtn.classList.toggle('is-married', isMarried);
+        }
 
         // Get input elements
         const income2Group = document.getElementById('income2Group');
@@ -42,23 +56,35 @@ const UIState = {
             // Set defaults for married (only if at single defaults)
             if (parseFloat(partnerIncomeInput.value) === 0) {
                 partnerIncomeInput.value = this.defaults.married.partnerIncome;
+                const slider = document.getElementById('partnerIncomeSlider');
+                if (slider) slider.value = this.defaults.married.partnerIncome;
             }
             if (parseFloat(housingCostInput.value) === this.defaults.single.rent) {
                 housingCostInput.value = this.defaults.married.rent;
+                const slider = document.getElementById('housingCostSlider');
+                if (slider) slider.value = this.defaults.married.rent;
             }
             if (parseFloat(apartmentSizeInput.value) === this.defaults.single.apartmentSize) {
                 apartmentSizeInput.value = this.defaults.married.apartmentSize;
+                const slider = document.getElementById('apartmentSizeSlider');
+                if (slider) slider.value = this.defaults.married.apartmentSize;
             }
         } else {
             income2Group.style.display = 'none';
             partnerIncomeInput.value = 0;
+            const partnerSlider = document.getElementById('partnerIncomeSlider');
+            if (partnerSlider) partnerSlider.value = 0;
 
             // Reset to single defaults if at married defaults
             if (parseFloat(housingCostInput.value) === this.defaults.married.rent) {
                 housingCostInput.value = this.defaults.single.rent;
+                const slider = document.getElementById('housingCostSlider');
+                if (slider) slider.value = this.defaults.single.rent;
             }
             if (parseFloat(apartmentSizeInput.value) === this.defaults.married.apartmentSize) {
                 apartmentSizeInput.value = this.defaults.single.apartmentSize;
+                const slider = document.getElementById('apartmentSizeSlider');
+                if (slider) slider.value = this.defaults.single.apartmentSize;
             }
         }
 

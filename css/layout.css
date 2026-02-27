@@ -219,7 +219,98 @@ input[type="number"] {
 }
 
 /* ===========================
-   Status Row (Alleinstehend / Verheiratet)
+   Compact status + children row
+   =========================== */
+.status-children-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+}
+
+/* Single toggle button (Alleinstehend ↔ Verheiratet) */
+.status-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background: var(--bg-secondary);
+    border: 2px solid var(--border-color);
+    border-radius: 999px;
+    /* pill shape */
+    cursor: pointer;
+    font-family: inherit;
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    color: var(--text-secondary);
+    transition: all var(--transition-base);
+    min-width: 180px;
+    white-space: nowrap;
+}
+
+.status-toggle-btn:hover {
+    border-color: var(--accent-primary);
+    color: var(--text-primary);
+}
+
+.status-toggle-btn.is-married {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+    background: rgba(29, 155, 240, 0.06);
+}
+
+.status-toggle-btn .toggle-icon {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+}
+
+.toggle-label-text {
+    flex: 1;
+    text-align: left;
+}
+
+/* Children stepper inline (👶 − 2 +) */
+.children-stepper {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 999px;
+    padding: var(--spacing-xs) var(--spacing-md);
+}
+
+.children-stepper-label {
+    font-size: 1.1rem;
+    line-height: 1;
+    margin-right: var(--spacing-xs);
+}
+
+.children-stepper .child-btn {
+    width: 32px;
+    height: 32px;
+    flex: 0 0 32px;
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--font-size-lg);
+    line-height: 1;
+}
+
+.children-stepper .child-count {
+    font-size: var(--font-size-base);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    min-width: 20px;
+    text-align: center;
+    color: var(--text-primary);
+}
+
+/* ===========================
+   Status Row (legacy / backward compat)
    =========================== */
 .status-row {
     display: flex;
