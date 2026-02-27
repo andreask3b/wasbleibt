@@ -8,13 +8,14 @@ const ChartManager = {
 
     // Chart colors - Staatlich Light palette
     COLORS: {
-        nettoFix: 'rgba(46, 125, 50, 0.85)',        // Forest Green - net income
-        nettoRising: 'rgba(245, 158, 11, 0.85)',    // Amber - rising net
-        familienbeihilfe: 'rgba(26, 68, 128, 0.85)', // Government Blue
+        netto: 'rgba(29, 155, 240, 0.85)',          // Light Blue - Net income
+        familienbeihilfe: 'rgba(26, 68, 128, 0.85)',// Government Blue
         sozialhilfe: 'rgba(183, 28, 28, 0.85)',     // Austrian Red
         wohnbeihilfe: 'rgba(245, 158, 11, 0.85)',   // Amber
         kinderzuschlag: 'rgba(123, 31, 162, 0.85)', // Purple
-        currentMarker: 'rgba(26, 68, 128, 1)'       // Government Blue
+        currentMarker: 'rgba(26, 68, 128, 1)',      // Government Blue
+        housingCost: 'rgba(239, 68, 68, 0.85)',     // Red - costs
+        wasBleibt: 'rgba(21, 128, 61, 1)'           // Green Line - Disposable
     },
 
     /**
@@ -32,6 +33,8 @@ const ChartManager = {
         const wohnbeihilfeData = [];
         const kinderzuschlagData = [];
         const sozialhilfeData = [];
+        const housingCostData = [];
+        const wasBleibtData = [];
 
         for (let gross = 0; gross <= maxGross; gross += step) {
             labels.push(gross);
@@ -42,6 +45,7 @@ const ChartManager = {
             // Calculate partner's net income (if married and partner has income)
             let partnerNetIncome = 0;
             let combinedMonthlyNet = taxResult.net;
+
             if (situation.familyStatus === 'married' && situation.partnerIncome > 0) {
                 const partnerTaxResult = TaxCalculator.calculateMonthlyNet(situation.partnerIncome);
                 partnerNetIncome = partnerTaxResult.net;
@@ -58,11 +62,22 @@ const ChartManager = {
                 annualTax: taxResult.annualTax
             });
 
-            nettoData.push(Math.round(combinedMonthlyNet));
+            // Calculate true net (including tax credits)
+            const trueNet = combinedMonthlyNet + (benefits.totalTaxCredits / 12);
+            nettoData.push(Math.round(trueNet));
             familienbeihilfeData.push(Math.round(benefits.familienbeihilfe.total));
             wohnbeihilfeData.push(Math.round(benefits.wohnbeihilfe.amount));
             kinderzuschlagData.push(Math.round(benefits.familienbonus.monthlyKindermehrbetrag || 0));
             sozialhilfeData.push(Math.round(benefits.sozialhilfe.amount));
+
+            // Housing costs (negative)
+            const housingAmount = situation.monthlyRent || 0;
+            housingCostData.push(-Math.round(housingAmount));
+
+            // What remains line
+            const totalPos = trueNet + benefits.familienbeihilfe.total + benefits.wohnbeihilfe.amount + (benefits.familienbonus.monthlyKindermehrbetrag || 0) + benefits.sozialhilfe.amount;
+            const totalNeg = housingAmount;
+            wasBleibtData.push(Math.round(totalPos - totalNeg));
         }
 
         const hasPartnerIncome = situation.familyStatus === 'married' && situation.partnerIncome > 0;
@@ -71,39 +86,64 @@ const ChartManager = {
             labels: labels,
             datasets: [
                 {
+                    label: 'Was bleibt',
+                    data: wasBleibtData,
+                    type: 'line',
+                    borderColor: this.COLORS.wasBleibt,
+                    backgroundColor: this.COLORS.wasBleibt,
+                    borderWidth: 3,
+                    pointRadius: 2,
+                    fill: false,
+                    order: 0 // Draw on top
+                },
+                {
                     label: hasPartnerIncome ? 'Haushaltsnetto' : 'Nettoeinkommen',
                     data: nettoData,
-                    backgroundColor: this.COLORS.nettoFix,
-                    borderColor: this.COLORS.nettoFix,
-                    borderWidth: 0
+                    backgroundColor: this.COLORS.netto,
+                    borderColor: this.COLORS.netto,
+                    borderWidth: 0,
+                    stack: 'Stack 0'
                 },
                 {
                     label: 'Familienbeihilfe',
                     data: familienbeihilfeData,
                     backgroundColor: this.COLORS.familienbeihilfe,
                     borderColor: this.COLORS.familienbeihilfe,
-                    borderWidth: 0
+                    borderWidth: 0,
+                    stack: 'Stack 0'
                 },
                 {
                     label: 'Wohnbeihilfe',
                     data: wohnbeihilfeData,
                     backgroundColor: this.COLORS.wohnbeihilfe,
                     borderColor: this.COLORS.wohnbeihilfe,
-                    borderWidth: 0
+                    borderWidth: 0,
+                    stack: 'Stack 0'
                 },
                 {
                     label: 'Kindermehrbetrag',
                     data: kinderzuschlagData,
                     backgroundColor: this.COLORS.kinderzuschlag,
                     borderColor: this.COLORS.kinderzuschlag,
-                    borderWidth: 0
+                    borderWidth: 0,
+                    stack: 'Stack 0'
                 },
                 {
                     label: 'Sozialhilfe',
                     data: sozialhilfeData,
                     backgroundColor: this.COLORS.sozialhilfe,
                     borderColor: this.COLORS.sozialhilfe,
-                    borderWidth: 0
+                    borderWidth: 0,
+                    stack: 'Stack 0'
+                },
+
+                {
+                    label: 'Wohnkosten',
+                    data: housingCostData,
+                    backgroundColor: this.COLORS.housingCost,
+                    borderColor: this.COLORS.housingCost,
+                    borderWidth: 0,
+                    stack: 'Stack 0'
                 }
             ],
             currentIndex: Math.round(currentGross / step)
@@ -204,15 +244,31 @@ const ChartManager = {
                                 return `Brutto: € ${items[0].label}/Monat`;
                             },
                             label: (item) => {
-                                return `${item.dataset.label}: € ${item.raw}`;
+                                return `${item.dataset.label}: € ${Math.abs(item.raw)}`;
                             },
                             afterBody: (items) => {
                                 const index = items[0].dataIndex;
-                                let total = 0;
+                                const gross = chartData.labels[index];
+                                let totalPos = 0;
+                                let totalNeg = 0;
+
                                 chartData.datasets.forEach(ds => {
-                                    total += ds.data[index];
+                                    if (ds.type !== 'line') {
+                                        const val = ds.data[index];
+                                        if (val > 0) totalPos += val;
+                                        else totalNeg += Math.abs(val);
+                                    }
                                 });
-                                return [`\nHaushaltskasse gesamt: € ${total}`];
+
+                                const disposable = Math.max(0, totalPos - totalNeg);
+                                const lines = [];
+
+                                lines.push(`(+) Einnahmen: € ${totalPos}`);
+                                lines.push(`(-) Abzüge & Kosten: -€ ${totalNeg}`);
+                                lines.push(`==================`);
+                                lines.push(`Was bleibt: € ${disposable}`);
+
+                                return lines;
                             }
                         }
                     }

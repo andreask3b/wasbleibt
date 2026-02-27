@@ -78,6 +78,14 @@
 
         <!-- Main Content -->
         <main class="main-content">
+            <!-- Chart Section (Hero) -->
+            <section class="chart-hero-section glass-card">
+                <h2>Ihr Einkommensprofil</h2>
+                <div class="chart-container" style="height: 350px;">
+                    <canvas id="incomeChart"></canvas>
+                </div>
+            </section>
+
             <!-- Input Section -->
             <section class="input-section glass-card">
                 <h2>Ihre Situation</h2>
@@ -147,20 +155,28 @@
                         <div class="income-field" id="income1Group">
                             <label for="grossIncome" id="incomeLabel1">Ich verdiene brutto <span
                                     id="periodLabel1">monatlich</span></label>
-                            <div class="input-wrapper large">
-                                <input type="number" id="grossIncome" min="0" max="500000" step="100" value="2700"
-                                    placeholder="2.700">
-                                <span class="input-suffix" id="incomeSuffix1">€/Monat</span>
+                            <div class="slider-wrapper">
+                                <input type="range" id="grossIncomeSlider" min="0" max="10000" step="100" value="2700"
+                                    class="range-slider">
+                                <div class="input-wrapper large slider-input">
+                                    <input type="number" id="grossIncome" min="0" max="500000" step="100" value="2700"
+                                        placeholder="2.700">
+                                    <span class="input-suffix" id="incomeSuffix1">€/Monat</span>
+                                </div>
                             </div>
                         </div>
 
                         <div class="income-field" id="income2Group" style="display: none;">
                             <label for="partnerIncome" id="incomeLabel2">Partner:in verdient brutto <span
                                     id="periodLabel2">monatlich</span></label>
-                            <div class="input-wrapper large">
-                                <input type="number" id="partnerIncome" min="0" max="500000" step="100" value="0"
-                                    placeholder="0">
-                                <span class="input-suffix" id="incomeSuffix2">€/Monat</span>
+                            <div class="slider-wrapper">
+                                <input type="range" id="partnerIncomeSlider" min="0" max="10000" step="100" value="0"
+                                    class="range-slider">
+                                <div class="input-wrapper large slider-input">
+                                    <input type="number" id="partnerIncome" min="0" max="500000" step="100" value="0"
+                                        placeholder="0">
+                                    <span class="input-suffix" id="incomeSuffix2">€/Monat</span>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -198,10 +214,14 @@
                             <span class="label-icon">💸</span>
                             <span id="housingCostLabel">Miete</span>
                         </label>
-                        <div class="input-wrapper">
-                            <input type="number" id="housingCost" min="0" max="3000" step="50" value="700"
-                                placeholder="700">
-                            <span class="input-suffix">€</span>
+                        <div class="slider-wrapper">
+                            <input type="range" id="housingCostSlider" min="0" max="3000" step="50" value="700"
+                                class="range-slider">
+                            <div class="input-wrapper slider-input">
+                                <input type="number" id="housingCost" min="0" max="3000" step="50" value="700"
+                                    placeholder="700">
+                                <span class="input-suffix">€</span>
+                            </div>
                         </div>
                         <small class="input-hint">Hauptmietzins ohne Betriebskosten</small>
                     </div>
@@ -212,10 +232,14 @@
                             <span class="label-icon">📐</span>
                             Wohnfläche
                         </label>
-                        <div class="input-wrapper">
-                            <input type="number" id="apartmentSize" min="20" max="300" step="5" value="60"
-                                placeholder="60">
-                            <span class="input-suffix">m²</span>
+                        <div class="slider-wrapper">
+                            <input type="range" id="apartmentSizeSlider" min="20" max="300" step="5" value="60"
+                                class="range-slider">
+                            <div class="input-wrapper slider-input">
+                                <input type="number" id="apartmentSize" min="20" max="300" step="5" value="60"
+                                    placeholder="60">
+                                <span class="input-suffix">m²</span>
+                            </div>
                         </div>
                         <small class="input-hint">&nbsp;</small>
                     </div>
@@ -265,19 +289,6 @@
                     <h3>Detaillierte Aufschlüsselung</h3>
                     <div class="breakdown-table" id="breakdownTable">
                         <!-- Will be populated by JavaScript -->
-                    </div>
-                </div>
-
-                <!-- Chart -->
-                <div class="chart-section">
-                    <h3>Vergleich: Haushaltskasse nach Bruttoeinkommen</h3>
-                    <p class="chart-description">
-                        Die Grafik zeigt, wie sich Ihr Haushaltseinkommen (Netto + Sozialleistungen)
-                        bei unterschiedlichen Bruttogehältern entwickelt. Die <strong>vertikale Linie</strong>
-                        markiert Ihr aktuelles Einkommen.
-                    </p>
-                    <div class="chart-container">
-                        <canvas id="incomeChart"></canvas>
                     </div>
                 </div>
 

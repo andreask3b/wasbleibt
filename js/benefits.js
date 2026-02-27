@@ -131,7 +131,9 @@ const BenefitsCalculator = {
         const usedBonus = Math.min(maxBonus, taxLiability);
         const remainingTax = Math.max(0, taxLiability - usedBonus);
         const unusedBonus = maxBonus - usedBonus;
-        const kindermehrbetrag = Math.min(unusedBonus, this.KINDERMEHRBETRAG * childrenAges.length);
+        // Kindermehrbetrag 2025: max. €700 TOTAL (not per child)
+        // Awarded when Familienbonus cannot be fully used (tax liability too low)
+        const kindermehrbetrag = Math.min(unusedBonus, this.KINDERMEHRBETRAG);
 
         return {
             maxBonus: maxBonus,
@@ -316,7 +318,7 @@ const BenefitsCalculator = {
      * Calculate Sozialhilfe/Mindestsicherung (Vienna)
      */
     calculateSozialhilfe(params) {
-        const { householdSize, numChildren, monthlyNetIncome, familyBenefits, wiedereinsteiger } = params;
+        const { householdSize, numChildren, monthlyNetIncome, familyBenefits, wiedereinsteiger, monthlyRent } = params;
 
         const sh = this.SOZIALHILFE;
         const numAdults = householdSize - numChildren;
@@ -330,7 +332,10 @@ const BenefitsCalculator = {
         const exemptIncome = monthlyNetIncome * freibetragRate;
         const countableIncome = monthlyNetIncome - exemptIncome;
         const totalIncome = countableIncome + (familyBenefits || 0);
-        const benefit = Math.max(0, maxEntitlement - totalIncome);
+        // Use withHousing entitlement if person has rent/housing costs (up to 30% more)
+        // Source: §8 Sozialhilfe-Grundsatzgesetz
+        const effectiveEntitlement = (monthlyRent > 0) ? withHousing : maxEntitlement;
+        const benefit = Math.max(0, effectiveEntitlement - totalIncome);
 
         return {
             eligible: benefit > 0,
@@ -402,16 +407,23 @@ const BenefitsCalculator = {
 
         const sozialhilfe = this.calculateSozialhilfe({
             householdSize, numChildren, monthlyNetIncome: householdNetIncome,
-            familyBenefits: familienbeihilfe.total, wiedereinsteiger: situation.wiedereinsteiger || false
+            familyBenefits: familienbeihilfe.total, wiedereinsteiger: situation.wiedereinsteiger || false,
+            monthlyRent: monthlyRent || 0
         });
 
         const totalMonthlyBenefits = familienbeihilfe.total + wohnbeihilfe.amount + (familienbonus.monthlyKindermehrbetrag || 0) + sozialhilfe.amount;
         const childcareCosts = this.calculateChildcareCosts({ children, federalState });
-        const totalHouseholdIncome = householdNetIncome + totalMonthlyBenefits - childcareCosts.total;
+        const trueNetIncome = householdNetIncome + (totalTaxCredits / 12);
+        const totalHouseholdIncome = trueNetIncome + totalMonthlyBenefits - childcareCosts.total;
+
+        // Calculate disposable income ("Was bleibt")
+        // Total Income minus Housing Costs (Rent/Loan)
+        const disposableIncome = Math.max(0, totalHouseholdIncome - (monthlyRent || 0));
 
         return {
             familienbeihilfe, avab, familienbonus, wohnbeihilfe, sozialhilfe, childcareCosts,
-            totalTaxCredits, totalMonthlyBenefits, totalHouseholdIncome, householdSize
+            totalTaxCredits, totalMonthlyBenefits, totalHouseholdIncome, householdSize,
+            disposableIncome, housingCost: monthlyRent || 0, trueNetIncome
         };
     }
 };

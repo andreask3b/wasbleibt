@@ -34,6 +34,29 @@ const FormManager = {
             this.calculate();
         });
 
+        // Bind Sliders to Number inputs and vice versa
+        const bindSlider = (sliderId, inputId) => {
+            const slider = document.getElementById(sliderId);
+            const input = document.getElementById(inputId);
+            if (slider && input) {
+                // Update input when slider moves
+                slider.addEventListener('input', (e) => {
+                    input.value = e.target.value;
+                    this.calculate();
+                });
+                // Update slider when input changes
+                input.addEventListener('input', (e) => {
+                    slider.value = e.target.value;
+                    this.calculate();
+                });
+            }
+        };
+
+        bindSlider('grossIncomeSlider', 'grossIncome');
+        bindSlider('partnerIncomeSlider', 'partnerIncome');
+        bindSlider('housingCostSlider', 'housingCost');
+        bindSlider('apartmentSizeSlider', 'apartmentSize');
+
         // Form inputs - trigger calculation on change
         document.querySelectorAll('input[type="number"], select').forEach(input => {
             input.addEventListener('change', () => this.calculate());
@@ -122,7 +145,7 @@ const FormManager = {
         document.getElementById('totalHousehold').textContent =
             this.formatCurrency(benefits.totalHouseholdIncome);
         document.getElementById('netIncome').textContent =
-            this.formatCurrency(combinedMonthlyNet);
+            this.formatCurrency(benefits.trueNetIncome);
         document.getElementById('totalBenefits').textContent =
             this.formatCurrency(benefits.totalMonthlyBenefits);
 
@@ -136,7 +159,7 @@ const FormManager = {
         RecommendationsManager.generateRecommendations(formData, taxResult, benefits);
 
         // Update sticky bar
-        UIState.updateStickyBar(benefits.totalHouseholdIncome, combinedMonthlyNet, benefits.totalMonthlyBenefits);
+        UIState.updateStickyBar(benefits.totalHouseholdIncome, benefits.trueNetIncome, benefits.totalMonthlyBenefits);
     },
 
     /**
@@ -199,11 +222,10 @@ const FormManager = {
             });
         }
 
-        // Net income subtotal
-        const combinedNet = hasPartner ? taxResult.net + partnerTaxResult.net : taxResult.net;
+        // Net income subtotal (includes applied tax credits)
         rows.push({
             label: hasPartner ? 'Haushaltsnetto (beide)' : 'Nettoeinkommen',
-            value: combinedNet,
+            value: benefits.trueNetIncome,
             color: '#2e7d32',
             isSubtotal: true
         });
@@ -259,11 +281,31 @@ const FormManager = {
         }
 
         // Total
+        // Total Household Income
         rows.push({
             label: 'Haushaltskasse gesamt',
             value: benefits.totalHouseholdIncome,
             color: '#1d9bf0',
             isTotal: true
+        });
+
+        // Housing Costs
+        if (benefits.housingCost > 0) {
+            rows.push({
+                label: 'Wohnkosten (Miete/Kredit)',
+                value: -benefits.housingCost,
+                color: '#ef4444',
+                negative: true
+            });
+        }
+
+        // Disposable Income ("Was bleibt")
+        rows.push({
+            label: 'Was bleibt (frei verfügbar)',
+            value: benefits.disposableIncome,
+            color: '#15803d',
+            isTotal: true,
+            highlight: true
         });
 
         container.innerHTML = rows.map(row => `

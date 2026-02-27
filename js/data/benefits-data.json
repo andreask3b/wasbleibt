@@ -165,6 +165,7 @@
                 "perAdditional": 20,
                 "max": 150
             },
+            "maxRatePerSqm": 6.00,
             "maxBenefit": 300,
             "minBenefit": 7,
             "minHousingCostPercent": 0.20
