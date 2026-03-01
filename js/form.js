@@ -177,155 +177,137 @@ const FormManager = {
         const container = document.getElementById('breakdownTable');
         if (!container) return;
 
+        // Canonical colors — must match css/variables.css --c-* and chart.js C.*
+        const CLR = {
+            brutto: '#1a4480',
+            netto: '#1d9bf0',
+            steuern: '#dc2626',
+            familienbonus: '#60b4f8',
+            familienbeihilfe: '#4f46e5',
+            sozialhilfe: '#ef4444',
+            wohnbeihilfe: '#f59e0b',
+            kinderbetreuung: '#f97316',
+            wohnkosten: '#f87171',
+            wasBleibt: '#16a34a',
+        };
+
         const hasPartner = partnerTaxResult && formData.partnerIncome > 0;
         const rows = [];
 
         // Primary earner income
         rows.push({
             label: hasPartner ? 'Bruttoeinkommen (Person 1)' : 'Bruttoeinkommen',
-            value: formData.monthlyGross,
-            color: '#1d9bf0'
+            value: formData.monthlyGross, color: CLR.brutto
         });
         rows.push({
             label: hasPartner ? 'Sozialversicherung (Person 1)' : 'Sozialversicherung',
-            value: -taxResult.socialSecurity.total,
-            color: '#dc2626',
-            negative: true
+            value: -taxResult.socialSecurity.total, color: CLR.steuern, negative: true
         });
         rows.push({
             label: hasPartner ? 'Lohnsteuer (Person 1)' : 'Lohnsteuer',
-            value: -taxResult.monthlyTax,
-            color: '#dc2626',
-            negative: true
+            value: -taxResult.monthlyTax, color: CLR.steuern, negative: true
         });
 
-        // Partner income (if applicable)
+        // Partner income
         if (hasPartner) {
             rows.push({
                 label: 'Bruttoeinkommen (Partner:in)',
-                value: formData.partnerIncome,
-                color: '#1d9bf0'
+                value: formData.partnerIncome, color: CLR.brutto
             });
             rows.push({
                 label: 'Sozialversicherung (Partner:in)',
-                value: -partnerTaxResult.socialSecurity.total,
-                color: '#dc2626',
-                negative: true
+                value: -partnerTaxResult.socialSecurity.total, color: CLR.steuern, negative: true
             });
             rows.push({
                 label: 'Lohnsteuer (Partner:in)',
-                value: -partnerTaxResult.monthlyTax,
-                color: '#dc2626',
-                negative: true
+                value: -partnerTaxResult.monthlyTax, color: CLR.steuern, negative: true
             });
         }
 
-        // Tax credits
+        // Familienbonus tax credit
         if (benefits.familienbonus.usedBonus > 0) {
             rows.push({
                 label: 'Familienbonus Plus (Steuerersparnis)',
                 value: benefits.familienbonus.usedBonus / 12,
-                color: '#00a67e',
-                isCredit: true
+                color: CLR.familienbonus, isCredit: true
             });
         }
 
-        // Net income subtotal (includes applied tax credits)
+        // Net income subtotal
         rows.push({
             label: hasPartner ? 'Haushaltsnetto (beide)' : 'Nettoeinkommen',
-            value: benefits.trueNetIncome,
-            color: '#2e7d32',
-            isSubtotal: true
+            value: benefits.trueNetIncome, color: CLR.netto, isSubtotal: true
         });
 
         // Benefits
         if (benefits.familienbeihilfe.total > 0) {
             rows.push({
                 label: `Familienbeihilfe (${benefits.familienbeihilfe.numChildren} Kind${benefits.familienbeihilfe.numChildren > 1 ? 'er' : ''})`,
-                value: benefits.familienbeihilfe.total,
-                color: '#1565c0'
+                value: benefits.familienbeihilfe.total, color: CLR.familienbeihilfe
             });
         }
-
+        if (benefits.familienbonus.monthlyKindermehrbetrag > 0) {
+            rows.push({
+                label: 'Kindermehrbetrag',
+                value: benefits.familienbonus.monthlyKindermehrbetrag,
+                color: CLR.familienbeihilfe
+            });
+        }
+        if (benefits.sozialhilfe.amount > 0) {
+            rows.push({
+                label: 'Sozialhilfe/Mindestsicherung',
+                value: benefits.sozialhilfe.amount, color: CLR.sozialhilfe
+            });
+        }
         if (benefits.wohnbeihilfe.amount > 0) {
             const stateNames = {
                 'vienna': 'Wien', 'steiermark': 'Steiermark', 'upperAustria': 'Oberösterreich',
                 'lowerAustria': 'Niederösterreich', 'salzburg': 'Salzburg', 'tyrol': 'Tirol',
                 'vorarlberg': 'Vorarlberg', 'carinthia': 'Kärnten', 'burgenland': 'Burgenland'
             };
-            const stateName = stateNames[formData.federalState] || formData.federalState;
-            const wbLabel = formData.federalState === 'steiermark' ? 'Wohnunterstützung' : 'Wohnbeihilfe';
+            const label = formData.federalState === 'steiermark' ? 'Wohnunterstützung' : 'Wohnbeihilfe';
             rows.push({
-                label: `${wbLabel} (${stateName})`,
-                value: benefits.wohnbeihilfe.amount,
-                color: '#f9a825'
+                label: `${label} (${stateNames[formData.federalState] || formData.federalState})`,
+                value: benefits.wohnbeihilfe.amount, color: CLR.wohnbeihilfe
             });
         }
 
-        if (benefits.familienbonus.monthlyKindermehrbetrag > 0) {
-            rows.push({
-                label: 'Kindermehrbetrag',
-                value: benefits.familienbonus.monthlyKindermehrbetrag,
-                color: '#6a1b9a'
-            });
-        }
-
-        if (benefits.sozialhilfe.amount > 0) {
-            rows.push({
-                label: 'Sozialhilfe/Mindestsicherung',
-                value: benefits.sozialhilfe.amount,
-                color: '#c62828'
-            });
-        }
-
-        // Childcare costs (negative)
+        // Childcare costs
         if (benefits.childcareCosts && benefits.childcareCosts.total > 0) {
             rows.push({
                 label: `Kinderbetreuung (${benefits.childcareCosts.breakdown.length} Kind${benefits.childcareCosts.breakdown.length > 1 ? 'er' : ''})`,
-                value: -benefits.childcareCosts.total,
-                color: '#ff6f00',
-                negative: true
+                value: -benefits.childcareCosts.total, color: CLR.kinderbetreuung, negative: true
             });
         }
 
-        // Total
-        // Total Household Income
+        // Total household
         rows.push({
-            label: 'Haushaltskasse gesamt',
-            value: benefits.totalHouseholdIncome,
-            color: '#1d9bf0',
-            isTotal: true
+            label: 'Haushaltskasse gesamt', value: benefits.totalHouseholdIncome,
+            color: CLR.netto, isTotal: true
         });
 
-        // Housing Costs
+        // Housing costs
         if (benefits.housingCost > 0) {
             rows.push({
                 label: 'Wohnkosten (Miete/Kredit)',
-                value: -benefits.housingCost,
-                color: '#ef4444',
-                negative: true
+                value: -benefits.housingCost, color: CLR.wohnkosten, negative: true
             });
         }
 
-        // Disposable Income ("Was bleibt")
+        // Was bleibt
         rows.push({
-            label: 'Was bleibt (frei verfügbar)',
-            value: benefits.disposableIncome,
-            color: '#15803d',
-            isTotal: true,
-            highlight: true
+            label: 'Was bleibt (frei verfügbar)', value: benefits.disposableIncome,
+            color: CLR.wasBleibt, isTotal: true, highlight: true
         });
 
         container.innerHTML = rows.map(row => `
-            <div class="breakdown-row ${row.negative ? 'negative' : ''} ${row.isTotal ? 'total' : ''}" 
+            <div class="breakdown-row ${row.negative ? 'negative' : ''} ${row.isTotal ? 'total' : ''}"
                  style="--row-color: ${row.color}">
                 <span class="row-label">
                     <span class="row-icon" style="background: ${row.color}"></span>
                     ${row.label}
                 </span>
-                <span class="row-value">
-                    ${this.formatCurrency(row.value)}
-                </span>
+                <span class="row-value">${this.formatCurrency(row.value)}</span>
             </div>
         `).join('');
     },

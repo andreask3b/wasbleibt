@@ -10,12 +10,34 @@
     --bg-tertiary: #f0f2f5;
     --bg-glass: rgba(255, 255, 255, 0.95);
 
-    /* Chart Colors (professional palette) */
-    --color-netto: #2e7d32;
-    --color-family: #1a4480;
-    --color-social: #b71c1c;
-    --color-housing: #f59e0b;
-    --color-child-bonus: #7b1fa2;
+    /* ===========================
+       Semantisches Farbschema
+       Gilt für Chart, Breakdown-Tabelle und Cards
+       =========================== */
+
+    /* Einnahmen / Positiv */
+    --c-brutto: #1a4480;
+    /* Bruttoeinkommen — dunkelblau */
+    --c-netto: #1d9bf0;
+    /* Nettoeinkommen — blau */
+    --c-familienbonus: #60b4f8;
+    /* Familienbonus Steuerkredit — hellblau */
+    --c-familienbeihilfe: #4f46e5;
+    /* Familienbeihilfe — indigo */
+    --c-sozialhilfe: #ef4444;
+    /* Sozialhilfe — rot */
+    --c-wohnbeihilfe: #f59e0b;
+    /* Wohnbeihilfe — amber */
+    --c-was-bleibt: #16a34a;
+    /* Was bleibt — grün */
+
+    /* Kosten / Negativ */
+    --c-steuern: #dc2626;
+    /* Lohnsteuer + SV — dunkelrot */
+    --c-wohnkosten: #f87171;
+    /* Miete/Kredit — hellrot */
+    --c-kinderbetreuung: #f97316;
+    /* Kinderbetreuungskosten — orange */
 
     /* Text Colors */
     --text-primary: #1b1b1b;
