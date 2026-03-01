@@ -1,15 +1,24 @@
 /**
  * Chart visualization — was-bleibt.at
- * Stacked cumulative line chart:
- *   Each line is a running total, so the BAND between two lines = one component.
  *
- * Color constants mirror css/variables.css --c-* values exactly.
+ * Architecture:
+ *   - Native Chart.js stacking (stack:'bands') with RAW values per dataset
+ *     → when a component is 0, its band has zero height; hiding a line
+ *       correctly re-stacks the rest (no more "parallel Sozialhilfe" bug)
+ *   - "Was bleibt" on a silent second y-axis (y2) that mirrors y, so it
+ *     is unaffected by the income-band stacking
+ *   - Custom HTML legend below chart: each item shows label + live hover value
+ *     Clicking an item toggles the dataset visibility
+ *
+ * Colors mirror css/variables.css --c-* exactly.
  */
 
 const ChartManager = {
     chart: null,
+    _legendEl: null,
+    _legendMeta: null,
 
-    // Mirror of css/variables.css --c-* (keep in sync!)
+    // Canonical colors — must match css/variables.css --c-*
     C: {
         netto: '#1d9bf0',
         familienbonus: '#60b4f8',
@@ -19,7 +28,7 @@ const ChartManager = {
         wasBleibt: '#16a34a',
         wasBleibtFill: 'rgba(22,163,74,0.13)',
         wohnkosten: '#f87171',
-        wohnkostenFill: 'rgba(248,113,113,0.12)',
+        wohnkostenFill: 'rgba(248,113,113,0.15)',
         marker: '#1a4480',
     },
 
@@ -27,15 +36,13 @@ const ChartManager = {
 
     generateChartData(situation, currentGross) {
         const STEP = 100;
-        // Extend range if user's income exceeds 6 000 — round up to next 1 000
         const MAX = Math.max(6000, Math.ceil(currentGross / 1000) * 1000 + 1000);
         const labels = [];
-
-        // Per-component arrays (individual values)
         const raw = {
             netto: [], familienbonus: [], familienbeihilfe: [],
-            sozialhilfe: [], wohnbeihilfe: [], wohnkosten: []
+            sozialhilfe: [], wohnbeihilfe: [], wohnkosten: [],
         };
+        const wasBleibt = [];
 
         for (let gross = 0; gross <= MAX; gross += STEP) {
             labels.push(gross);
@@ -52,106 +59,109 @@ const ChartManager = {
                 ...situation,
                 monthlyGross: gross, monthlyNet: tax.net,
                 partnerNetIncome: partnerNet, combinedMonthlyNet: combinedNet,
-                annualTax: tax.annualTax
+                annualTax: tax.annualTax,
             });
 
-            // Pure netto (no tax credits yet)
-            raw.netto.push(Math.round(combinedNet));
+            const trueNet = combinedNet + (b.totalTaxCredits / 12);
+            // Familienbonus = tax credit portion (monthly tax credit minus Kindermehrbetrag
+            // because Kindermehrbetrag is grouped with Familienbeihilfe below)
+            const fb = Math.max(0, Math.round(
+                (b.totalTaxCredits / 12) - (b.familienbonus.monthlyKindermehrbetrag || 0)
+            ));
+            const fa = Math.round(
+                b.familienbeihilfe.total + (b.familienbonus.monthlyKindermehrbetrag || 0)
+            );
+            const sh = Math.round(b.sozialhilfe.amount);
+            const wb = Math.round(b.wohnbeihilfe.amount);
+            const wk = situation.monthlyRent || 0;
+            const n = Math.round(trueNet - (b.totalTaxCredits / 12)); // base netto w/o tax credit
 
-            // Familienbonus = tax credit applied on top of combinedNet
-            const fb = Math.round((b.totalTaxCredits / 12)
-                - (b.familienbonus.monthlyKindermehrbetrag || 0));
-            raw.familienbonus.push(Math.max(0, fb));
-
-            // Kindermehrbetrag is counted here together with Familienbeihilfe
-            raw.familienbeihilfe.push(Math.round(b.familienbeihilfe.total
-                + (b.familienbonus.monthlyKindermehrbetrag || 0)));
-
-            raw.sozialhilfe.push(Math.round(b.sozialhilfe.amount));
-            raw.wohnbeihilfe.push(Math.round(b.wohnbeihilfe.amount));
-            raw.wohnkosten.push(situation.monthlyRent || 0);
+            raw.netto.push(n);
+            raw.familienbonus.push(fb);
+            raw.familienbeihilfe.push(fa);
+            raw.sozialhilfe.push(sh);
+            raw.wohnbeihilfe.push(wb);
+            raw.wohnkosten.push(wk);
+            wasBleibt.push(n + fb + fa + sh + wb - wk);
         }
-
-        // Build CUMULATIVE lines (each line = running sum up to that component)
-        const cum = {
-            netto: [],
-            plusFamilienbonus: [],
-            plusFambeihilfe: [],
-            plusSozialhilfe: [],
-            plusWohnbeihilfe: [],
-            wasBleibt: [],
-            minusWohnkosten: [],   // negative band below zero
-        };
-
-        for (let i = 0; i < labels.length; i++) {
-            const n = raw.netto[i];
-            const fb = raw.familienbonus[i];
-            const fa = raw.familienbeihilfe[i];
-            const sh = raw.sozialhilfe[i];
-            const wb = raw.wohnbeihilfe[i];
-            const wk = raw.wohnkosten[i];
-
-            cum.netto[i] = n;
-            cum.plusFamilienbonus[i] = n + fb;
-            cum.plusFambeihilfe[i] = n + fb + fa;
-            cum.plusSozialhilfe[i] = n + fb + fa + sh;
-            cum.plusWohnbeihilfe[i] = n + fb + fa + sh + wb;
-            cum.wasBleibt[i] = n + fb + fa + sh + wb - wk;
-            cum.minusWohnkosten[i] = -wk;  // shown below zero
-        }
-
-        // Determine which optional lines have any non-zero value
-        const anyFB = raw.familienbonus.some(v => v > 0);
-        const anyFA = raw.familienbeihilfe.some(v => v > 0);
-        const anySH = raw.sozialhilfe.some(v => v > 0);
-        const anyWB = raw.wohnbeihilfe.some(v => v > 0);
-        const anyWK = raw.wohnkosten.some(v => v > 0);
 
         return {
-            labels,
-            cum,
-            raw,
-            anyFB, anyFA, anySH, anyWB, anyWK,
+            labels, raw, wasBleibt,
+            anyFB: raw.familienbonus.some(v => v > 0),
+            anyFA: raw.familienbeihilfe.some(v => v > 0),
+            anySH: raw.sozialhilfe.some(v => v > 0),
+            anyWB: raw.wohnbeihilfe.some(v => v > 0),
+            anyWK: raw.wohnkosten.some(v => v > 0),
             currentIndex: Math.round(currentGross / STEP),
             situation,
         };
     },
 
-    // ─── External Tooltip Panel ───────────────────────────────────────────────
+    // ─── Custom HTML Legend ───────────────────────────────────────────────────
 
-    _getOrCreateHoverPanel(wrapper) {
-        let panel = wrapper.querySelector('.chart-hover-panel');
-        if (!panel) {
-            panel = document.createElement('div');
-            panel.className = 'chart-hover-panel';
-            wrapper.appendChild(panel);
-        }
-        return panel;
+    _renderCustomLegend(section, datasets, legendMeta) {
+        // Remove old
+        section.querySelectorAll('.chart-custom-legend').forEach(el => el.remove());
+
+        const legend = document.createElement('div');
+        legend.className = 'chart-custom-legend';
+
+        datasets.forEach((ds, dsIdx) => {
+            if (!ds.label) return;
+            const item = document.createElement('div');
+            item.className = 'ccl-item';
+            item.dataset.dsIdx = dsIdx;
+            if (ds.hidden) item.classList.add('ccl-hidden');
+
+            const isDashed = ds.borderDash?.length > 0;
+            item.innerHTML = `
+                <span class="ccl-swatch${isDashed ? ' ccl-dash' : ''}"
+                      style="background:${ds.hidden ? 'transparent' : ds.borderColor};
+                             border-color:${ds.borderColor};"></span>
+                <span class="ccl-label">${ds.label}</span>
+                <span class="ccl-value" data-label="${ds.label}">—</span>
+            `;
+
+            item.addEventListener('click', () => {
+                if (!this.chart) return;
+                const meta = this.chart.getDatasetMeta(dsIdx);
+                meta.hidden = !meta.hidden;
+                item.classList.toggle('ccl-hidden', !!meta.hidden);
+                item.querySelector('.ccl-swatch').style.background =
+                    meta.hidden ? 'transparent' : ds.borderColor;
+                this.chart.update();
+            });
+
+            legend.appendChild(item);
+        });
+
+        section.appendChild(legend);
+        this._legendEl = legend;
+        this._legendMeta = legendMeta;
     },
 
-    _updateHoverPanel(panel, d, index) {
-        const fmt = v => '€\u202f' + Math.round(v).toLocaleString('de-AT');
-        const n = d.raw.netto[index] || 0;
-        const fb = d.raw.familienbonus[index] || 0;
-        const fa = d.raw.familienbeihilfe[index] || 0;
-        const sh = d.raw.sozialhilfe[index] || 0;
-        const wb = d.raw.wohnbeihilfe[index] || 0;
-        const wk = d.raw.wohnkosten[index] || 0;
-        const wb2 = d.cum.wasBleibt[index] || 0;
+    _updateLegendValues(d, index) {
+        if (!this._legendEl) return;
+        const fmt = v => '€\u202f' + Math.round(Math.abs(v)).toLocaleString('de-AT');
 
-        const parts = [
-            `<span style="color:#94a3b8">Brutto <strong>${fmt(d.labels[index])}</strong></span>`,
-            `<span style="color:${this.C.netto}">Netto <strong>${fmt(n)}</strong></span>`,
-        ];
-        if (fb > 0) parts.push(`<span style="color:${this.C.familienbonus}">Familienbonus <strong>+${fmt(fb)}</strong></span>`);
-        if (fa > 0) parts.push(`<span style="color:${this.C.familienbeihilfe}">Familienbeihilfe <strong>+${fmt(fa)}</strong></span>`);
-        if (sh > 0) parts.push(`<span style="color:${this.C.sozialhilfe}">Sozialhilfe <strong>+${fmt(sh)}</strong></span>`);
-        if (wb > 0) parts.push(`<span style="color:${this.C.wohnbeihilfe}">Wohnbeihilfe <strong>+${fmt(wb)}</strong></span>`);
-        if (wk > 0) parts.push(`<span style="color:${this.C.wohnkosten}">Wohnkosten <strong>&#8722;${fmt(wk)}</strong></span>`);
-        parts.push(`<span style="color:${this.C.wasBleibt}; font-weight:700">= Was bleibt <strong>${fmt(wb2)}</strong></span>`);
+        // Gross label at top
+        let header = this._legendEl.querySelector('.ccl-gross');
+        if (!header) {
+            header = document.createElement('div');
+            header.className = 'ccl-gross';
+            this._legendEl.prepend(header);
+        }
+        header.textContent = `Brutto ${fmt(d.labels[index])}/Monat`;
 
-        panel.innerHTML = parts.join('<span class="chp-sep">·</span>');
-        panel.classList.add('visible');
+        this._legendEl.querySelectorAll('.ccl-value').forEach(cell => {
+            const fn = this._legendMeta?.[cell.dataset.label];
+            const v = fn ? fn(index) : null;
+            if (v === null || v === undefined) { cell.textContent = '—'; return; }
+            const lbl = cell.dataset.label;
+            const sign = lbl === 'Wohnkosten' ? '−' : (lbl === 'Was bleibt' ? '= ' : '+');
+            cell.textContent = v !== 0 ? `${sign}${fmt(v)}` : '—';
+            cell.classList.toggle('ccl-value--active', v !== 0);
+        });
     },
 
     // ─── Chart Creation ───────────────────────────────────────────────────────
@@ -159,14 +169,14 @@ const ChartManager = {
     createChart(canvasId, situation, currentGross) {
         const canvas = document.getElementById(canvasId);
         if (!canvas) return;
+
         const d = this.generateChartData(situation, currentGross);
-        if (this.chart) this.chart.destroy();
+        if (this.chart) { this.chart.destroy(); this.chart = null; }
 
-        // Ensure hover panel exists after canvas
-        const wrapper = canvas.closest('.chart-container') || canvas.parentElement;
-        const hoverPanel = this._getOrCreateHoverPanel(wrapper.parentElement || wrapper);
+        const hasP = situation.familyStatus === 'married' && situation.partnerIncome > 0;
+        const DASH = [5, 4];
 
-        // — Vertical "Ihr Einkommen" marker —
+        // ── "Ihr Einkommen" vertical dashed marker ─────────────────────────
         const markerPlugin = {
             id: 'verticalLine',
             afterDraw: (chart) => {
@@ -175,123 +185,132 @@ const ChartManager = {
                 const ctx = chart.ctx;
                 const x = chart.scales.x.getPixelForValue(idx);
                 const { top, bottom } = chart.scales.y;
+
                 ctx.save();
                 ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, bottom);
                 ctx.lineWidth = 1.5; ctx.strokeStyle = this.C.marker;
                 ctx.setLineDash([5, 4]); ctx.stroke(); ctx.setLineDash([]);
+
                 const lbl = 'Ihr Einkommen';
                 ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, sans-serif';
                 const tw = ctx.measureText(lbl).width;
-                const pad = 7, rh = 20;
-                const rx = x - tw / 2 - pad, ry = top + 6, rw = tw + pad * 2;
+                const pad = 7, rh = 20, ry = top + 6;
+                const rx = x - tw / 2 - pad, rw = tw + pad * 2;
                 ctx.fillStyle = this.C.marker;
                 ctx.beginPath(); ctx.roundRect(rx, ry, rw, rh, 4); ctx.fill();
                 ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
                 ctx.fillText(lbl, x, ry + rh / 2);
                 ctx.restore();
-            }
+            },
         };
 
-        const DASH = [5, 4];
-        const hasP = situation.familyStatus === 'married' && situation.partnerIncome > 0;
+        // ── Axis-sync plugin: y2 always mirrors y range ────────────────────
+        const axisSync = {
+            id: 'axisSync',
+            afterUpdate: (chart) => {
+                const y = chart.scales.y;
+                const y2 = chart.scales.y2;
+                if (!y || !y2) return;
+                if (y.min !== y2.min || y.max !== y2.max) {
+                    y2.options.min = y.min;
+                    y2.options.max = y.max;
+                }
+            },
+        };
 
-        // Helper: build a dashed "band top" dataset
-        const band = (label, data, color, hidden = false, fillTarget = '-1') => ({
-            label,
-            data,
+        // ── Dataset builder helpers ────────────────────────────────────────
+        const bandDs = (label, data, color, hidden = false) => ({
+            label, data,
+            yAxisID: 'y',
+            stack: 'bands',
             borderColor: color,
-            backgroundColor: color + '28',  // ~16% opacity fill
+            backgroundColor: color + '28',
             borderWidth: 1.5,
             borderDash: DASH,
-            pointRadius: 0,
-            pointHoverRadius: 3,
-            fill: fillTarget,
+            pointRadius: 0, pointHoverRadius: 3,
+            fill: true,           // fill within the stacked band
             tension: 0.35,
             hidden,
-            order: 10,
+            order: 5,
         });
 
         const datasets = [
-            // ── 0. Wohnkosten (negative area below zero) ──────────────────
+            // ── Income/benefit bands (stack:'bands', yAxisID:'y') ──────────
+
+            // Nettoeinkommen — thicker dashed base
+            {
+                label: hasP ? 'Haushaltsnetto' : 'Nettoeinkommen',
+                data: d.raw.netto,
+                yAxisID: 'y',
+                stack: 'bands',
+                borderColor: this.C.netto,
+                backgroundColor: this.C.netto + '28',
+                borderWidth: 2.5,
+                borderDash: DASH,
+                pointRadius: 0, pointHoverRadius: 4,
+                fill: true,
+                tension: 0.35,
+                order: 5,
+            },
+
+            // Familienbonus tax credit
+            ...(d.anyFB ? [bandDs('Familienbonus (Steuerkredit)', d.raw.familienbonus, this.C.familienbonus)] : []),
+
+            // Familienbeihilfe (incl. Kindermehrbetrag)
+            ...(d.anyFA ? [bandDs('Familienbeihilfe', d.raw.familienbeihilfe, this.C.familienbeihilfe)] : []),
+
+            // Sozialhilfe
+            ...(d.anySH ? [bandDs('Sozialhilfe', d.raw.sozialhilfe, this.C.sozialhilfe)] : []),
+
+            // Wohnbeihilfe
+            ...(d.anyWB ? [bandDs('Wohnbeihilfe', d.raw.wohnbeihilfe, this.C.wohnbeihilfe)] : []),
+
+            // ── Wohnkosten (negative band, stacks below zero) ──────────────
             ...(d.anyWK ? [{
                 label: 'Wohnkosten',
-                data: d.cum.minusWohnkosten,
+                data: d.raw.wohnkosten.map(v => -v),
+                yAxisID: 'y',
+                stack: 'bands',
                 borderColor: this.C.wohnkosten,
                 backgroundColor: this.C.wohnkostenFill,
                 borderWidth: 1.5,
                 borderDash: DASH,
-                pointRadius: 0,
-                pointHoverRadius: 3,
-                fill: 'origin',   // fill down to zero
-                tension: 0.1,     // nearly flat (fixed cost)
-                order: 12,
+                pointRadius: 0, pointHoverRadius: 3,
+                fill: true,
+                tension: 0.1,
+                order: 6,
             }] : []),
 
-            // ── 1. Nettoeinkommen (base line, thicker) ────────────────────
-            {
-                label: hasP ? 'Haushaltsnetto' : 'Nettoeinkommen',
-                data: d.cum.netto,
-                borderColor: this.C.netto,
-                backgroundColor: 'transparent',
-                borderWidth: 2.5,
-                borderDash: DASH,
-                pointRadius: 0,
-                pointHoverRadius: 4,
-                fill: false,
-                tension: 0.35,
-                order: 9,
-            },
-
-            // ── 2. + Familienbonus (Steuerkredit) ─────────────────────────
-            ...(d.anyFB ? [band(
-                'Familienbonus (Steuerkredit)',
-                d.cum.plusFamilienbonus,
-                this.C.familienbonus,
-                false,
-                '-1'    // fill to netto
-            )] : []),
-
-            // ── 3. + Familienbeihilfe ─────────────────────────────────────
-            ...(d.anyFA ? [band(
-                'Familienbeihilfe',
-                d.cum.plusFambeihilfe,
-                this.C.familienbeihilfe,
-                false,
-                '-1'   // fill to plusFamilienbonus (or netto if no FB)
-            )] : []),
-
-            // ── 4. + Sozialhilfe ──────────────────────────────────────────
-            ...(d.anySH ? [band(
-                'Sozialhilfe',
-                d.cum.plusSozialhilfe,
-                this.C.sozialhilfe,
-                false,
-                '-1'
-            )] : []),
-
-            // ── 5. + Wohnbeihilfe ─────────────────────────────────────────
-            ...(d.anyWB ? [band(
-                'Wohnbeihilfe',
-                d.cum.plusWohnbeihilfe,
-                this.C.wohnbeihilfe,
-                false,
-                '-1'
-            )] : []),
-
-            // ── 6. Was bleibt (solid green, filled to origin) ─────────────
+            // ── Was bleibt — solid green on y2 (unaffected by stacking) ───
             {
                 label: 'Was bleibt',
-                data: d.cum.wasBleibt,
+                data: d.wasBleibt,
+                yAxisID: 'y2',
                 borderColor: this.C.wasBleibt,
                 backgroundColor: this.C.wasBleibtFill,
                 borderWidth: 2.5,
-                pointRadius: 0,
-                pointHoverRadius: 5,
+                pointRadius: 0, pointHoverRadius: 5,
                 fill: 'origin',
                 tension: 0.35,
                 order: 1,
             },
         ];
+
+        // ── Legend meta: raw value functions per label ─────────────────────
+        const nettoLabel = hasP ? 'Haushaltsnetto' : 'Nettoeinkommen';
+        const legendMeta = {
+            [nettoLabel]: idx => d.raw.netto[idx],
+            'Familienbonus (Steuerkredit)': idx => d.raw.familienbonus[idx],
+            'Familienbeihilfe': idx => d.raw.familienbeihilfe[idx],
+            'Sozialhilfe': idx => d.raw.sozialhilfe[idx],
+            'Wohnbeihilfe': idx => d.raw.wohnbeihilfe[idx],
+            'Wohnkosten': idx => d.raw.wohnkosten[idx],
+            'Was bleibt': idx => d.wasBleibt[idx],
+        };
+
+        // ── Build custom legend in the section element ─────────────────────
+        const section = canvas.closest('section') || canvas.parentElement;
+        this._renderCustomLegend(section, datasets, legendMeta);
 
         this.chart = new Chart(canvas, {
             type: 'line',
@@ -301,28 +320,15 @@ const ChartManager = {
                 maintainAspectRatio: false,
                 animation: { duration: 250 },
                 plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            color: '#718096',
-                            font: { size: 11 },
-                            padding: 14,
-                            usePointStyle: true,
-                            pointStyle: 'line',
-                            boxWidth: 24,
-                        },
-                        // Default click = toggle visibility (Chart.js built-in, nothing to override)
-                    },
+                    legend: { display: false },   // using custom HTML legend
                     tooltip: {
-                        // Disable the floating bubble; use external panel instead
                         enabled: false,
                         external: (context) => {
-                            const tooltip = context.tooltip;
-                            if (tooltip.opacity === 0 || !tooltip.dataPoints?.length) return;
-                            const idx = tooltip.dataPoints[0].dataIndex;
-                            this._updateHoverPanel(hoverPanel, d, idx);
-                        }
-                    }
+                            const tt = context.tooltip;
+                            if (!tt.dataPoints?.length) return;
+                            this._updateLegendValues(d, tt.dataPoints[0].dataIndex);
+                        },
+                    },
                 },
                 scales: {
                     x: {
@@ -330,25 +336,33 @@ const ChartManager = {
                             display: true,
                             text: 'Bruttolohn (€/Monat)',
                             color: '#94a3b8',
-                            font: { size: 11 }
+                            font: { size: 11 },
                         },
                         ticks: {
                             color: '#94a3b8', maxRotation: 0, font: { size: 10 },
-                            callback: (val, idx) => idx % 5 === 0 ? '€' + d.labels[idx] : ''
+                            callback: (val, idx) => idx % 5 === 0 ? '€' + d.labels[idx] : '',
                         },
-                        grid: { color: 'rgba(0,0,0,0.04)' }
+                        grid: { color: 'rgba(0,0,0,0.04)' },
                     },
                     y: {
+                        stacked: true,   // stack the 'bands' group
+                        position: 'left',
                         ticks: {
                             color: '#94a3b8', font: { size: 10 },
-                            callback: (v) => '€' + v.toLocaleString('de-AT')
+                            callback: v => '€' + v.toLocaleString('de-AT'),
                         },
-                        grid: { color: 'rgba(0,0,0,0.04)' }
-                    }
+                        grid: { color: 'rgba(0,0,0,0.04)' },
+                    },
+                    y2: {
+                        stacked: false,  // Was bleibt — not stacked
+                        position: 'left',
+                        display: false,  // hide axis ticks (y already shows them)
+                        grid: { display: false },
+                    },
                 },
-                interaction: { mode: 'index', intersect: false }
+                interaction: { mode: 'index', intersect: false },
             },
-            plugins: [markerPlugin]
+            plugins: [markerPlugin, axisSync],
         });
     },
 
@@ -356,10 +370,10 @@ const ChartManager = {
 
     findTrapZones(situation) {
         const step = 100;
-        // Use same dynamic MAX as chart data
         const grossInput = situation.monthlyGross || 0;
         const MAX = Math.max(6000, Math.ceil(grossInput / 1000) * 1000 + 1000);
         const results = [], trapZones = [];
+
         for (let gross = 0; gross <= MAX; gross += step) {
             const tax = TaxCalculator.calculateMonthlyNet(gross);
             let partnerNet = 0, combinedNet = tax.net;
@@ -370,10 +384,11 @@ const ChartManager = {
             const b = BenefitsCalculator.calculateAllBenefits({
                 ...situation, monthlyGross: gross, monthlyNet: tax.net,
                 partnerNetIncome: partnerNet, combinedMonthlyNet: combinedNet,
-                annualTax: tax.annualTax
+                annualTax: tax.annualTax,
             });
             results.push({ gross, total: b.totalHouseholdIncome });
         }
+
         for (let i = 1; i < results.length; i++) {
             const prev = results[i - 1], curr = results[i];
             if (curr.total <= prev.total && curr.gross > prev.gross)
@@ -384,7 +399,7 @@ const ChartManager = {
                 });
         }
         return trapZones;
-    }
+    },
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = ChartManager;
