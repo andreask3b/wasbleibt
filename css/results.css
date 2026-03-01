@@ -473,3 +473,38 @@
     margin: -4px 0 10px 0;
     line-height: 1.5;
 }
+
+/* ===========================
+   Chart Hover Panel
+   Appears below canvas, above legend, on mouse-over
+   =========================== */
+.chart-hover-panel {
+    display: none;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    padding: 8px 14px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    min-height: 34px;
+    line-height: 1.4;
+}
+
+.chart-hover-panel.visible {
+    display: flex;
+}
+
+.chp-sep {
+    color: var(--border-color);
+    margin: 0 2px;
+    font-size: 0.7rem;
+}
+
+/* When hover panel is visible, square off the bottom of chart-container */
+.chart-container:has(+ .chart-hover-panel.visible) {
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}

@@ -26,7 +26,9 @@ const ChartManager = {
     // ─── Data Generation ─────────────────────────────────────────────────────
 
     generateChartData(situation, currentGross) {
-        const STEP = 100, MAX = 6000;
+        const STEP = 100;
+        // Extend range if user's income exceeds 6 000 — round up to next 1 000
+        const MAX = Math.max(6000, Math.ceil(currentGross / 1000) * 1000 + 1000);
         const labels = [];
 
         // Per-component arrays (individual values)
@@ -115,6 +117,43 @@ const ChartManager = {
         };
     },
 
+    // ─── External Tooltip Panel ───────────────────────────────────────────────
+
+    _getOrCreateHoverPanel(wrapper) {
+        let panel = wrapper.querySelector('.chart-hover-panel');
+        if (!panel) {
+            panel = document.createElement('div');
+            panel.className = 'chart-hover-panel';
+            wrapper.appendChild(panel);
+        }
+        return panel;
+    },
+
+    _updateHoverPanel(panel, d, index) {
+        const fmt = v => '€\u202f' + Math.round(v).toLocaleString('de-AT');
+        const n = d.raw.netto[index] || 0;
+        const fb = d.raw.familienbonus[index] || 0;
+        const fa = d.raw.familienbeihilfe[index] || 0;
+        const sh = d.raw.sozialhilfe[index] || 0;
+        const wb = d.raw.wohnbeihilfe[index] || 0;
+        const wk = d.raw.wohnkosten[index] || 0;
+        const wb2 = d.cum.wasBleibt[index] || 0;
+
+        const parts = [
+            `<span style="color:#94a3b8">Brutto <strong>${fmt(d.labels[index])}</strong></span>`,
+            `<span style="color:${this.C.netto}">Netto <strong>${fmt(n)}</strong></span>`,
+        ];
+        if (fb > 0) parts.push(`<span style="color:${this.C.familienbonus}">Familienbonus <strong>+${fmt(fb)}</strong></span>`);
+        if (fa > 0) parts.push(`<span style="color:${this.C.familienbeihilfe}">Familienbeihilfe <strong>+${fmt(fa)}</strong></span>`);
+        if (sh > 0) parts.push(`<span style="color:${this.C.sozialhilfe}">Sozialhilfe <strong>+${fmt(sh)}</strong></span>`);
+        if (wb > 0) parts.push(`<span style="color:${this.C.wohnbeihilfe}">Wohnbeihilfe <strong>+${fmt(wb)}</strong></span>`);
+        if (wk > 0) parts.push(`<span style="color:${this.C.wohnkosten}">Wohnkosten <strong>&#8722;${fmt(wk)}</strong></span>`);
+        parts.push(`<span style="color:${this.C.wasBleibt}; font-weight:700">= Was bleibt <strong>${fmt(wb2)}</strong></span>`);
+
+        panel.innerHTML = parts.join('<span class="chp-sep">·</span>');
+        panel.classList.add('visible');
+    },
+
     // ─── Chart Creation ───────────────────────────────────────────────────────
 
     createChart(canvasId, situation, currentGross) {
@@ -122,6 +161,10 @@ const ChartManager = {
         if (!canvas) return;
         const d = this.generateChartData(situation, currentGross);
         if (this.chart) this.chart.destroy();
+
+        // Ensure hover panel exists after canvas
+        const wrapper = canvas.closest('.chart-container') || canvas.parentElement;
+        const hoverPanel = this._getOrCreateHoverPanel(wrapper.parentElement || wrapper);
 
         // — Vertical "Ihr Einkommen" marker —
         const markerPlugin = {
@@ -267,45 +310,18 @@ const ChartManager = {
                             usePointStyle: true,
                             pointStyle: 'line',
                             boxWidth: 24,
-                        }
+                        },
+                        // Default click = toggle visibility (Chart.js built-in, nothing to override)
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(255,255,255,0.97)',
-                        titleColor: '#1b1b1b',
-                        bodyColor: '#4a5568',
-                        borderColor: 'rgba(0,0,0,0.10)',
-                        borderWidth: 1,
-                        padding: 10,
-                        cornerRadius: 8,
-                        callbacks: {
-                            title: (items) => `Brutto: € ${d.labels[items[0].dataIndex]}/Monat`,
-                            label: (item) => {
-                                const idx = item.dataIndex;
-                                const lbl = item.dataset.label;
-                                // Show the band value (difference), not cumulative
-                                let val = item.raw;
-                                const di = item.datasetIndex;
-                                // Map dataset index to individual raw value
-                                const rawMap = {
-                                    'Haushaltsnetto': () => d.raw.netto[idx],
-                                    'Nettoeinkommen': () => d.raw.netto[idx],
-                                    'Familienbonus (Steuerkredit)': () => d.raw.familienbonus[idx],
-                                    'Familienbeihilfe': () => d.raw.familienbeihilfe[idx],
-                                    'Sozialhilfe': () => d.raw.sozialhilfe[idx],
-                                    'Wohnbeihilfe': () => d.raw.wohnbeihilfe[idx],
-                                    'Was bleibt': () => d.cum.wasBleibt[idx],
-                                    'Wohnkosten': () => d.raw.wohnkosten[idx],
-                                };
-                                const rawFn = rawMap[lbl];
-                                const displayVal = rawFn ? Math.round(rawFn()) : Math.round(val);
-                                if (displayVal === 0) return null;   // hide zero rows
-                                const prefix = lbl === 'Wohnkosten' ? '  −' : '  +';
-                                const sign = lbl === 'Was bleibt' ? '  =' : prefix;
-                                return `${sign} ${lbl}: € ${displayVal.toLocaleString('de-AT')}`;
-                            },
-                            afterLabel: (item) => null,
-                        },
-                        filter: (item) => item.formattedValue !== null && item.raw !== 0,
+                        // Disable the floating bubble; use external panel instead
+                        enabled: false,
+                        external: (context) => {
+                            const tooltip = context.tooltip;
+                            if (tooltip.opacity === 0 || !tooltip.dataPoints?.length) return;
+                            const idx = tooltip.dataPoints[0].dataIndex;
+                            this._updateHoverPanel(hoverPanel, d, idx);
+                        }
                     }
                 },
                 scales: {
@@ -340,8 +356,11 @@ const ChartManager = {
 
     findTrapZones(situation) {
         const step = 100;
+        // Use same dynamic MAX as chart data
+        const grossInput = situation.monthlyGross || 0;
+        const MAX = Math.max(6000, Math.ceil(grossInput / 1000) * 1000 + 1000);
         const results = [], trapZones = [];
-        for (let gross = 0; gross <= 6000; gross += step) {
+        for (let gross = 0; gross <= MAX; gross += step) {
             const tax = TaxCalculator.calculateMonthlyNet(gross);
             let partnerNet = 0, combinedNet = tax.net;
             if (situation.familyStatus === 'married' && situation.partnerIncome > 0) {
