@@ -1,22 +1,19 @@
 /**
  * Chart visualization for Austrian Tax Calculator
- * Line chart with filled areas — clean, mobile-friendly
+ * Two-line chart: "Was bleibt" + "Nettoeinkommen" for reference
  */
 
 const ChartManager = {
     chart: null,
 
-    // Color palette
     COLORS: {
-        wasBleibt: { line: '#16a34a', fill: 'rgba(22, 163, 74, 0.12)' },   // Green
-        netto: { line: '#1d9bf0', fill: 'rgba(29, 155, 240, 0.10)' },   // Blue
-        sozialleistungen: { line: '#f59e0b', fill: 'rgba(245, 158, 11, 0.10)' },   // Amber
-        sozialhilfe: { line: '#ef4444', fill: 'rgba(239, 68, 68, 0.10)' },    // Red
+        wasBleibt: { line: '#16a34a', fill: 'rgba(22, 163, 74, 0.12)' },
+        netto: { line: '#94a3b8', fill: 'transparent' }, // muted grey — reference only
         currentMarker: '#1a4480',
     },
 
     /**
-     * Generate chart data for income range
+     * Generate data for income range
      */
     generateChartData(situation, currentGross) {
         const step = 100;
@@ -24,14 +21,11 @@ const ChartManager = {
         const labels = [];
         const wasBleibtData = [];
         const nettoData = [];
-        const sozialleistungenData = [];
-        const sozialhilfeData = [];
 
         for (let gross = 0; gross <= maxGross; gross += step) {
             labels.push(gross);
 
             const taxResult = TaxCalculator.calculateMonthlyNet(gross);
-
             let partnerNetIncome = 0;
             let combinedMonthlyNet = taxResult.net;
             if (situation.familyStatus === 'married' && situation.partnerIncome > 0) {
@@ -51,63 +45,22 @@ const ChartManager = {
 
             const trueNet = combinedMonthlyNet + (benefits.totalTaxCredits / 12);
             const housing = situation.monthlyRent || 0;
-            const bene = benefits.familienbeihilfe.total
+            const totalBenefits = benefits.familienbeihilfe.total
                 + benefits.wohnbeihilfe.amount
-                + (benefits.familienbonus.monthlyKindermehrbetrag || 0);
+                + (benefits.familienbonus.monthlyKindermehrbetrag || 0)
+                + benefits.sozialhilfe.amount;
 
             nettoData.push(Math.round(trueNet));
-            sozialleistungenData.push(Math.round(bene));
-            sozialhilfeData.push(Math.round(benefits.sozialhilfe.amount));
-            wasBleibtData.push(Math.round(trueNet + bene + benefits.sozialhilfe.amount - housing));
+            wasBleibtData.push(Math.round(trueNet + totalBenefits - housing));
         }
 
         return {
             labels,
-            currentIndex: Math.round(currentGross / step),
             wasBleibtData,
             nettoData,
-            sozialleistungenData,
-            sozialhilfeData,
+            currentIndex: Math.round(currentGross / step),
             situation,
         };
-    },
-
-    /**
-     * Build the fixed tooltip panel HTML — shown above chart on hover/touch
-     */
-    _tooltipPanelId: 'chartTooltipPanel',
-
-    _ensureTooltipPanel(container) {
-        let panel = document.getElementById(this._tooltipPanelId);
-        if (!panel) {
-            panel = document.createElement('div');
-            panel.id = this._tooltipPanelId;
-            panel.className = 'chart-tooltip-panel';
-            container.insertAdjacentElement('beforebegin', panel);
-        }
-        return panel;
-    },
-
-    _updateTooltipPanel(panel, gross, chartData, index) {
-        const fmt = (v) => '€\u202f' + Math.round(v).toLocaleString('de-AT');
-        const housing = chartData.situation.monthlyRent || 0;
-
-        const netto = chartData.nettoData[index] || 0;
-        const bene = chartData.sozialleistungenData[index] || 0;
-        const sh = chartData.sozialhilfeData[index] || 0;
-        const wasBleibt = chartData.wasBleibtData[index] || 0;
-
-        panel.innerHTML = `
-            <span class="ctp-gross">Brutto: <strong>${fmt(gross)}</strong></span>
-            <span class="ctp-sep">|</span>
-            <span class="ctp-item ctp-netto">Netto <strong>${fmt(netto)}</strong></span>
-            ${bene > 0 ? `<span class="ctp-sep">+</span><span class="ctp-item ctp-bene">Leistungen <strong>${fmt(bene)}</strong></span>` : ''}
-            ${sh > 0 ? `<span class="ctp-sep">+</span><span class="ctp-item ctp-sh">Sozialhilfe <strong>${fmt(sh)}</strong></span>` : ''}
-            ${housing > 0 ? `<span class="ctp-sep">−</span><span class="ctp-item ctp-housing">Wohnen <strong>${fmt(housing)}</strong></span>` : ''}
-            <span class="ctp-sep">=</span>
-            <span class="ctp-item ctp-wasbleibt">Was bleibt <strong>${fmt(wasBleibt)}</strong></span>
-        `;
-        panel.classList.add('visible');
     },
 
     /**
@@ -119,60 +72,54 @@ const ChartManager = {
 
         const chartData = this.generateChartData(situation, currentGross);
 
-        if (this.chart) {
-            this.chart.destroy();
-        }
+        if (this.chart) this.chart.destroy();
 
-        // Ensure tooltip panel
-        const container = canvas.closest('.chart-container') || canvas.parentElement;
-        const panel = this._ensureTooltipPanel(canvas.closest('.chart-wrapper') || container);
-
-        // --- Vertical line plugin ---
+        // --- Vertical marker plugin ("Ihr Einkommen") ---
         const verticalLinePlugin = {
             id: 'verticalLine',
             afterDraw: (chart) => {
                 const idx = chartData.currentIndex;
                 if (idx < 0 || idx >= chart.data.labels.length) return;
+
                 const ctx = chart.ctx;
                 const xAxis = chart.scales.x;
                 const yAxis = chart.scales.y;
                 const x = xAxis.getPixelForValue(idx);
 
+                // Dashed line
                 ctx.save();
                 ctx.beginPath();
                 ctx.moveTo(x, yAxis.top);
                 ctx.lineTo(x, yAxis.bottom);
-                ctx.lineWidth = 2;
+                ctx.lineWidth = 1.5;
                 ctx.strokeStyle = this.COLORS.currentMarker;
                 ctx.setLineDash([5, 4]);
                 ctx.stroke();
                 ctx.setLineDash([]);
 
-                // Label
+                // Pill label
                 const label = 'Ihr Einkommen';
                 ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, sans-serif';
-                const textWidth = ctx.measureText(label).width;
-                const padding = 6;
-                const rectX = x - textWidth / 2 - padding;
-                const rectY = yAxis.top + 6;
-                const rectW = textWidth + padding * 2;
-                const rectH = 20;
+                ctx.textBaseline = 'middle';
+                const tw = ctx.measureText(label).width;
+                const pad = 7, rh = 20;
+                const rx = x - tw / 2 - pad;
+                const ry = yAxis.top + 6;
+                const rw = tw + pad * 2;
 
-                // Background pill
                 ctx.fillStyle = this.COLORS.currentMarker;
                 ctx.beginPath();
-                ctx.roundRect(rectX, rectY, rectW, rectH, 4);
+                ctx.roundRect(rx, ry, rw, rh, 4);
                 ctx.fill();
 
-                ctx.fillStyle = '#ffffff';
+                ctx.fillStyle = '#fff';
                 ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(label, x, rectY + rectH / 2);
+                ctx.fillText(label, x, ry + rh / 2);
                 ctx.restore();
             }
         };
 
-        const hasPartnerIncome = situation.familyStatus === 'married' && situation.partnerIncome > 0;
+        const hasPartner = situation.familyStatus === 'married' && situation.partnerIncome > 0;
 
         this.chart = new Chart(canvas, {
             type: 'line',
@@ -192,48 +139,24 @@ const ChartManager = {
                         order: 1,
                     },
                     {
-                        label: hasPartnerIncome ? 'Haushaltsnetto' : 'Nettoeinkommen',
+                        label: hasPartner ? 'Haushaltsnetto (Referenz)' : 'Nettoeinkommen (Referenz)',
                         data: chartData.nettoData,
                         borderColor: this.COLORS.netto.line,
                         backgroundColor: 'transparent',
-                        borderWidth: 2,
+                        borderWidth: 1.5,
+                        borderDash: [6, 3],
                         pointRadius: 0,
-                        pointHoverRadius: 4,
+                        pointHoverRadius: 3,
                         fill: false,
                         tension: 0.35,
-                        borderDash: [],
                         order: 2,
-                    },
-                    {
-                        label: 'Sozialleistungen',
-                        data: chartData.sozialleistungenData,
-                        borderColor: this.COLORS.sozialleistungen.line,
-                        backgroundColor: 'transparent',
-                        borderWidth: 1.5,
-                        pointRadius: 0,
-                        pointHoverRadius: 4,
-                        fill: false,
-                        tension: 0.35,
-                        order: 3,
-                    },
-                    {
-                        label: 'Sozialhilfe',
-                        data: chartData.sozialhilfeData,
-                        borderColor: this.COLORS.sozialhilfe.line,
-                        backgroundColor: 'transparent',
-                        borderWidth: 1.5,
-                        pointRadius: 0,
-                        pointHoverRadius: 4,
-                        fill: false,
-                        tension: 0.35,
-                        order: 4,
                     },
                 ]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: { duration: 300 },
+                animation: { duration: 250 },
                 plugins: {
                     legend: {
                         position: 'bottom',
@@ -243,18 +166,26 @@ const ChartManager = {
                             padding: 16,
                             usePointStyle: true,
                             pointStyle: 'line',
-                            boxWidth: 20,
+                            boxWidth: 24,
                         }
                     },
                     tooltip: {
-                        // Disable the floating tooltip — we use the fixed panel instead
-                        enabled: false,
-                        external: (context) => {
-                            if (context.tooltip.opacity === 0) return;
-                            const index = context.tooltip.dataPoints?.[0]?.dataIndex;
-                            if (index === undefined) return;
-                            const gross = chartData.labels[index];
-                            this._updateTooltipPanel(panel, gross, chartData, index);
+                        // Minimal: just show values at hover point, no external panel
+                        backgroundColor: 'rgba(255,255,255,0.96)',
+                        titleColor: '#1b1b1b',
+                        bodyColor: '#4a5568',
+                        borderColor: 'rgba(0,0,0,0.10)',
+                        borderWidth: 1,
+                        padding: 10,
+                        cornerRadius: 8,
+                        displayColors: true,
+                        callbacks: {
+                            title: (items) => `Brutto: € ${items[0].label}/Monat`,
+                            label: (item) => {
+                                const v = item.raw;
+                                const suffix = item.datasetIndex === 1 ? ' (ohne Leistungen/Kosten)' : '';
+                                return ` ${item.dataset.label.split(' (')[0]}: € ${v.toLocaleString('de-AT')}${suffix}`;
+                            }
                         }
                     }
                 },
@@ -263,46 +194,44 @@ const ChartManager = {
                         title: {
                             display: true,
                             text: 'Bruttolohn (€/Monat)',
-                            color: '#718096',
-                            font: { size: 12, family: '-apple-system, BlinkMacSystemFont, sans-serif' }
+                            color: '#94a3b8',
+                            font: { size: 11, family: '-apple-system, BlinkMacSystemFont, sans-serif' }
                         },
                         ticks: {
-                            color: '#718096',
+                            color: '#94a3b8',
                             maxRotation: 0,
+                            font: { size: 10 },
                             callback: (value, index) => {
                                 if (index % 5 === 0) return '€' + chartData.labels[index];
                                 return '';
                             }
                         },
-                        grid: { color: 'rgba(0,0,0,0.05)' }
+                        grid: { color: 'rgba(0,0,0,0.04)' }
                     },
                     y: {
                         ticks: {
-                            color: '#718096',
+                            color: '#94a3b8',
+                            font: { size: 10 },
                             callback: (v) => '€' + v.toLocaleString('de-AT')
                         },
-                        grid: { color: 'rgba(0,0,0,0.05)' }
+                        grid: { color: 'rgba(0,0,0,0.04)' }
                     }
                 },
-                interaction: {
-                    mode: 'index',
-                    intersect: false
-                }
+                interaction: { mode: 'index', intersect: false }
             },
             plugins: [verticalLinePlugin]
         });
     },
 
     /**
-     * Find "trap zones" where earning more doesn't increase total income
+     * Find "trap zones" — income ranges where more gross → less total
      */
     findTrapZones(situation) {
         const step = 100;
-        const maxGross = 6000;
         const results = [];
         const trapZones = [];
 
-        for (let gross = 0; gross <= maxGross; gross += step) {
+        for (let gross = 0; gross <= 6000; gross += step) {
             const taxResult = TaxCalculator.calculateMonthlyNet(gross);
             let partnerNetIncome = 0;
             let combinedMonthlyNet = taxResult.net;
@@ -312,19 +241,14 @@ const ChartManager = {
                 combinedMonthlyNet = taxResult.net + partnerNetIncome;
             }
             const benefits = BenefitsCalculator.calculateAllBenefits({
-                ...situation,
-                monthlyGross: gross,
-                monthlyNet: taxResult.net,
-                partnerNetIncome,
-                combinedMonthlyNet,
-                annualTax: taxResult.annualTax
+                ...situation, monthlyGross: gross, monthlyNet: taxResult.net,
+                partnerNetIncome, combinedMonthlyNet, annualTax: taxResult.annualTax
             });
             results.push({ gross, total: benefits.totalHouseholdIncome });
         }
 
         for (let i = 1; i < results.length; i++) {
-            const prev = results[i - 1];
-            const curr = results[i];
+            const prev = results[i - 1], curr = results[i];
             if (curr.total <= prev.total && curr.gross > prev.gross) {
                 trapZones.push({
                     fromGross: prev.gross, toGross: curr.gross,

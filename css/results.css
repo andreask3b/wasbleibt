@@ -465,3 +465,11 @@
         display: flex;
         align-items: center;
         justify-content: center;
+
+/* Chart subtitle — explains What bleibt formula */
+.chart-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin: -4px 0 10px 0;
+    line-height: 1.5;
+}
