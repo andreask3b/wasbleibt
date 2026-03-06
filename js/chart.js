@@ -12,6 +12,74 @@ const ChartManager = {
     chart: null,
     _legendEl: null,
     _legendMeta: null,
+    _stylesInjected: false,
+
+    _injectStyles() {
+        if (this._stylesInjected) return;
+        this._stylesInjected = true;
+        const s = document.createElement('style');
+        s.textContent = `
+.chart-custom-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px 16px;
+    padding: 10px 4px 16px;
+    font-size: 0.78rem;
+    color: #718096;
+}
+.ccl-gross {
+    width: 100%;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #94a3b8;
+    letter-spacing: 0.02em;
+    margin-bottom: 2px;
+    display: none;
+}
+.ccl-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+    padding: 3px 6px;
+    border-radius: 4px;
+    transition: background 0.15s;
+    user-select: none;
+}
+.ccl-item:hover { background: rgba(0,0,0,0.05); }
+.ccl-item.ccl-hidden { opacity: 0.35; }
+.ccl-swatch {
+    display: inline-block;
+    width: 22px;
+    height: 3px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+.ccl-dash {
+    background: transparent !important;
+    border-top: 2px dashed;
+    height: 0;
+}
+.ccl-label {
+    color: #718096;
+    white-space: nowrap;
+    font-size: 0.78rem;
+}
+.ccl-value {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: #94a3b8;
+    font-size: 0.78rem;
+    white-space: nowrap;
+    transition: color 0.15s;
+}
+.ccl-value--active { color: #1b1b1b; }
+`;
+        document.head.appendChild(s);
+    },
 
     // Canonical colors — must match css/variables.css --c-*
     C: {
@@ -92,8 +160,11 @@ const ChartManager = {
     // ─── Custom HTML Legend (inside chart container) ──────────────────────────
 
     _renderCustomLegend(chartContainer, datasets, legendMeta) {
-        // Remove old legend if present
-        chartContainer.querySelectorAll('.chart-custom-legend').forEach(el => el.remove());
+        this._injectStyles();
+
+        // Remove old legend if present (could be a sibling of chart-container)
+        const section = chartContainer.closest('section') || chartContainer.parentElement;
+        section.querySelectorAll('.chart-custom-legend').forEach(el => el.remove());
 
         const legend = document.createElement('div');
         legend.className = 'chart-custom-legend';
@@ -127,8 +198,8 @@ const ChartManager = {
             legend.appendChild(item);
         });
 
-        // Insert inside the chart-container (as overlay)
-        chartContainer.appendChild(legend);
+        // Insert AFTER the chartContainer as a sibling (between chart and summary cards)
+        chartContainer.insertAdjacentElement('afterend', legend);
         this._legendEl = legend;
         this._legendMeta = legendMeta;
     },
@@ -283,7 +354,7 @@ const ChartManager = {
             'Was bleibt': idx => d.wasBleibt[idx],
         };
 
-        // ── Build custom legend INSIDE chart-container ─────────────────────
+        // ── Build custom legend below chart-container ──────────────────────
         const chartContainer = canvas.closest('.chart-container') || canvas.parentElement;
         this._renderCustomLegend(chartContainer, datasets, legendMeta);
 

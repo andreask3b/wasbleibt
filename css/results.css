@@ -473,99 +473,87 @@
             margin: -4px 0 10px 0;
             line-height: 1.5;
         }
+    }
+    }
 
-        /* ===========================
-   Custom Chart Legend — overlay inside chart
+    /* ===========================
+   Custom Chart Legend — below chart
    =========================== */
 
-        /* chart-container must be position:relative for overlay */
-        .chart-container {
-            position: relative;
-        }
+    .chart-custom-legend {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 6px 16px;
+        padding: 10px 4px 16px;
+        font-size: 0.78rem;
+        color: var(--text-secondary);
+    }
 
-        .chart-custom-legend {
-            position: absolute;
-            bottom: 28px;
-            /* above x-axis label */
-            left: 8px;
-            right: 8px;
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            gap: 4px 12px;
-            padding: 6px 10px;
-            background: rgba(255, 255, 255, 0.88);
-            backdrop-filter: blur(4px);
-            border-radius: var(--radius-md);
-            font-size: 0.75rem;
-            color: var(--text-secondary);
-            z-index: 10;
-            pointer-events: auto;
-        }
+    /* Gross label shown on hover */
+    .ccl-gross {
+        width: 100%;
+        text-align: center;
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        letter-spacing: 0.02em;
+        margin-bottom: 2px;
+        display: none;
+    }
 
-        /* Gross label shown on hover */
-        .ccl-gross {
-            width: 100%;
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            letter-spacing: 0.02em;
-            margin-bottom: 1px;
-            display: none;
-            /* hidden until first hover */
-        }
+    /* Legend item */
+    .ccl-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        cursor: pointer;
+        padding: 3px 6px;
+        border-radius: var(--radius-sm);
+        transition: background var(--transition-fast);
+        user-select: none;
+    }
 
-        /* Legend item */
-        .ccl-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-            cursor: pointer;
-            padding: 1px 4px;
-            border-radius: var(--radius-sm);
-            transition: background var(--transition-fast);
-            user-select: none;
-        }
+    .ccl-item:hover {
+        background: rgba(0, 0, 0, 0.05);
+    }
 
-        .ccl-item:hover {
-            background: rgba(0, 0, 0, 0.05);
-        }
+    .ccl-item.ccl-hidden {
+        opacity: 0.35;
+    }
 
-        .ccl-item.ccl-hidden {
-            opacity: 0.35;
-        }
+    /* Color swatch */
+    .ccl-swatch {
+        display: inline-block;
+        width: 22px;
+        height: 3px;
+        border-radius: 2px;
+        flex-shrink: 0;
+    }
 
-        /* Color swatch */
-        .ccl-swatch {
-            display: inline-block;
-            width: 18px;
-            height: 3px;
-            border-radius: 2px;
-            flex-shrink: 0;
-        }
+    .ccl-dash {
+        background: transparent !important;
+        border-top: 2px dashed;
+        height: 0;
+    }
 
-        .ccl-dash {
-            background: transparent !important;
-            border-top: 2px dashed;
-            height: 0;
-        }
+    .ccl-label {
+        color: var(--text-secondary);
+        white-space: nowrap;
+        font-size: 0.78rem;
+    }
 
-        .ccl-label {
-            color: var(--text-secondary);
-            white-space: nowrap;
-            font-size: 0.73rem;
-        }
+    /* Value — appears on hover */
+    .ccl-value {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        color: var(--text-muted);
+        font-size: 0.78rem;
+        white-space: nowrap;
+        transition: color var(--transition-fast);
+    }
 
-        /* Value — appears on hover */
-        .ccl-value {
-            font-variant-numeric: tabular-nums;
-            font-weight: 600;
-            color: var(--text-muted);
-            font-size: 0.73rem;
-            white-space: nowrap;
-            transition: color var(--transition-fast);
-            min-width: 0;
-        }
-
-        .ccl-value--active {
-            color: var(--text-primary);
-        }
+    .ccl-value--active {
+        color: var(--text-primary);
+    }
