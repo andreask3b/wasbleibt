@@ -466,118 +466,106 @@
         align-items: center;
         justify-content: center;
 
-/* Chart subtitle — explains What bleibt formula */
-.chart-subtitle {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-    margin: -4px 0 10px 0;
-    line-height: 1.5;
-}
+        /* Chart subtitle — explains What bleibt formula */
+        .chart-subtitle {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin: -4px 0 10px 0;
+            line-height: 1.5;
+        }
 
-/* ===========================
-   Chart Hover Panel
-   Appears below canvas, above legend, on mouse-over
+        /* ===========================
+   Custom Chart Legend — overlay inside chart
    =========================== */
-.chart-hover-panel {
-    display: none;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 4px 10px;
-    padding: 8px 14px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-top: none;
-    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    min-height: 34px;
-    line-height: 1.4;
-}
 
-.chart-hover-panel.visible {
-    display: flex;
-}
+        /* chart-container must be position:relative for overlay */
+        .chart-container {
+            position: relative;
+        }
 
-.chp-sep {
-    color: var(--border-color);
-    margin: 0 2px;
-    font-size: 0.7rem;
-}
+        .chart-custom-legend {
+            position: absolute;
+            bottom: 28px;
+            /* above x-axis label */
+            left: 8px;
+            right: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 4px 12px;
+            padding: 6px 10px;
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(4px);
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            z-index: 10;
+            pointer-events: auto;
+        }
 
-/* When hover panel is visible, square off the bottom of chart-container */
-.chart-container:has(+ .chart-hover-panel.visible) {
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-}
+        /* Gross label shown on hover */
+        .ccl-gross {
+            width: 100%;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 0.02em;
+            margin-bottom: 1px;
+            display: none;
+            /* hidden until first hover */
+        }
 
-/* ===========================
-   Custom Chart Legend with Hover Values
-   =========================== */
-.chart-custom-legend {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 6px 16px;
-    padding: 10px 14px 8px;
-    border-top: 1px solid var(--border-color);
-    font-size: 0.78rem;
-    color: var(--text-secondary);
-}
+        /* Legend item */
+        .ccl-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            padding: 1px 4px;
+            border-radius: var(--radius-sm);
+            transition: background var(--transition-fast);
+            user-select: none;
+        }
 
-/* Gross label shown on hover */
-.ccl-gross {
-    width: 100%;
-    font-size: 0.72rem;
-    color: var(--text-muted);
-    letter-spacing: 0.02em;
-    margin-bottom: 2px;
-    min-height: 1em;
-}
+        .ccl-item:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
 
-/* Individual legend item */
-.ccl-item {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    cursor: pointer;
-    padding: 2px 4px;
-    border-radius: var(--radius-sm);
-    transition: background var(--transition-fast);
-    user-select: none;
-}
-.ccl-item:hover { background: var(--bg-tertiary); }
-.ccl-item.ccl-hidden { opacity: 0.4; }
+        .ccl-item.ccl-hidden {
+            opacity: 0.35;
+        }
 
-/* Color swatch — solid or dashed line indicator */
-.ccl-swatch {
-    display: inline-block;
-    width: 22px;
-    height: 3px;
-    border-radius: 2px;
-    flex-shrink: 0;
-}
-.ccl-dash {
-    background: transparent !important;
-    border-top: 2px dashed;
-    height: 0;
-    margin-top: 1px;
-}
+        /* Color swatch */
+        .ccl-swatch {
+            display: inline-block;
+            width: 18px;
+            height: 3px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
 
-.ccl-label {
-    color: var(--text-secondary);
-    white-space: nowrap;
-    font-size: 0.78rem;
-}
+        .ccl-dash {
+            background: transparent !important;
+            border-top: 2px dashed;
+            height: 0;
+        }
 
-/* Value cell — shows on hover */
-.ccl-value {
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-    color: var(--text-muted);
-    min-width: 64px;
-    font-size: 0.78rem;
-    white-space: nowrap;
-    transition: color var(--transition-fast);
-}
-.ccl-value--active {
-    color: var(--text-primary);
-}
+        .ccl-label {
+            color: var(--text-secondary);
+            white-space: nowrap;
+            font-size: 0.73rem;
+        }
+
+        /* Value — appears on hover */
+        .ccl-value {
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+            color: var(--text-muted);
+            font-size: 0.73rem;
+            white-space: nowrap;
+            transition: color var(--transition-fast);
+            min-width: 0;
+        }
+
+        .ccl-value--active {
+            color: var(--text-primary);
+        }

@@ -1,14 +1,9 @@
 /**
  * Chart visualization — was-bleibt.at
  *
- * Architecture:
- *   - Native Chart.js stacking (stack:'bands') with RAW values per dataset
- *     → when a component is 0, its band has zero height; hiding a line
- *       correctly re-stacks the rest (no more "parallel Sozialhilfe" bug)
- *   - "Was bleibt" on a silent second y-axis (y2) that mirrors y, so it
- *     is unaffected by the income-band stacking
- *   - Custom HTML legend below chart: each item shows label + live hover value
- *     Clicking an item toggles the dataset visibility
+ * Stacked line chart using Chart.js native stacking.
+ * "Was bleibt" = b.disposableIncome from BenefitsCalculator (canonical source).
+ * Custom HTML legend rendered INSIDE the chart container as an overlay.
  *
  * Colors mirror css/variables.css --c-* exactly.
  */
@@ -62,27 +57,24 @@ const ChartManager = {
                 annualTax: tax.annualTax,
             });
 
-            const trueNet = combinedNet + (b.totalTaxCredits / 12);
-            // Familienbonus = tax credit portion (monthly tax credit minus Kindermehrbetrag
-            // because Kindermehrbetrag is grouped with Familienbeihilfe below)
-            const fb = Math.max(0, Math.round(
-                (b.totalTaxCredits / 12) - (b.familienbonus.monthlyKindermehrbetrag || 0)
-            ));
-            const fa = Math.round(
-                b.familienbeihilfe.total + (b.familienbonus.monthlyKindermehrbetrag || 0)
-            );
-            const sh = Math.round(b.sozialhilfe.amount);
-            const wb = Math.round(b.wohnbeihilfe.amount);
-            const wk = situation.monthlyRent || 0;
-            const n = Math.round(trueNet - (b.totalTaxCredits / 12)); // base netto w/o tax credit
+            // Base netto (combined, before any tax credits)
+            raw.netto.push(Math.round(combinedNet));
 
-            raw.netto.push(n);
-            raw.familienbonus.push(fb);
-            raw.familienbeihilfe.push(fa);
-            raw.sozialhilfe.push(sh);
-            raw.wohnbeihilfe.push(wb);
-            raw.wohnkosten.push(wk);
-            wasBleibt.push(n + fb + fa + sh + wb - wk);
+            // Familienbonus = total tax credit / 12 (AVAB + Familienbonus Plus)
+            // minus Kindermehrbetrag (which we count with Familienbeihilfe)
+            const taxCreditMonthly = b.totalTaxCredits / 12;
+            const kmb = b.familienbonus.monthlyKindermehrbetrag || 0;
+            raw.familienbonus.push(Math.max(0, Math.round(taxCreditMonthly - kmb)));
+
+            // Familienbeihilfe + Kindermehrbetrag
+            raw.familienbeihilfe.push(Math.round(b.familienbeihilfe.total + kmb));
+
+            raw.sozialhilfe.push(Math.round(b.sozialhilfe.amount));
+            raw.wohnbeihilfe.push(Math.round(b.wohnbeihilfe.amount));
+            raw.wohnkosten.push(situation.monthlyRent || 0);
+
+            // Use the CANONICAL disposableIncome from BenefitsCalculator
+            wasBleibt.push(Math.round(b.disposableIncome));
         }
 
         return {
@@ -97,11 +89,11 @@ const ChartManager = {
         };
     },
 
-    // ─── Custom HTML Legend ───────────────────────────────────────────────────
+    // ─── Custom HTML Legend (inside chart container) ──────────────────────────
 
-    _renderCustomLegend(section, datasets, legendMeta) {
-        // Remove old
-        section.querySelectorAll('.chart-custom-legend').forEach(el => el.remove());
+    _renderCustomLegend(chartContainer, datasets, legendMeta) {
+        // Remove old legend if present
+        chartContainer.querySelectorAll('.chart-custom-legend').forEach(el => el.remove());
 
         const legend = document.createElement('div');
         legend.className = 'chart-custom-legend';
@@ -119,7 +111,7 @@ const ChartManager = {
                       style="background:${ds.hidden ? 'transparent' : ds.borderColor};
                              border-color:${ds.borderColor};"></span>
                 <span class="ccl-label">${ds.label}</span>
-                <span class="ccl-value" data-label="${ds.label}">—</span>
+                <span class="ccl-value" data-label="${ds.label}"></span>
             `;
 
             item.addEventListener('click', () => {
@@ -135,7 +127,8 @@ const ChartManager = {
             legend.appendChild(item);
         });
 
-        section.appendChild(legend);
+        // Insert inside the chart-container (as overlay)
+        chartContainer.appendChild(legend);
         this._legendEl = legend;
         this._legendMeta = legendMeta;
     },
@@ -144,7 +137,7 @@ const ChartManager = {
         if (!this._legendEl) return;
         const fmt = v => '€\u202f' + Math.round(Math.abs(v)).toLocaleString('de-AT');
 
-        // Gross label at top
+        // Show gross value header
         let header = this._legendEl.querySelector('.ccl-gross');
         if (!header) {
             header = document.createElement('div');
@@ -152,15 +145,30 @@ const ChartManager = {
             this._legendEl.prepend(header);
         }
         header.textContent = `Brutto ${fmt(d.labels[index])}/Monat`;
+        header.style.display = '';
 
         this._legendEl.querySelectorAll('.ccl-value').forEach(cell => {
             const fn = this._legendMeta?.[cell.dataset.label];
             const v = fn ? fn(index) : null;
-            if (v === null || v === undefined) { cell.textContent = '—'; return; }
+            if (v === null || v === undefined || v === 0) {
+                cell.textContent = '';
+                cell.classList.remove('ccl-value--active');
+                return;
+            }
             const lbl = cell.dataset.label;
-            const sign = lbl === 'Wohnkosten' ? '−' : (lbl === 'Was bleibt' ? '= ' : '+');
-            cell.textContent = v !== 0 ? `${sign}${fmt(v)}` : '—';
-            cell.classList.toggle('ccl-value--active', v !== 0);
+            const sign = lbl === 'Wohnkosten' ? '−' : (lbl === 'Was bleibt' ? '' : '+');
+            cell.textContent = `${sign}${fmt(v)}`;
+            cell.classList.add('ccl-value--active');
+        });
+    },
+
+    _clearLegendValues() {
+        if (!this._legendEl) return;
+        const header = this._legendEl.querySelector('.ccl-gross');
+        if (header) header.style.display = 'none';
+        this._legendEl.querySelectorAll('.ccl-value').forEach(cell => {
+            cell.textContent = '';
+            cell.classList.remove('ccl-value--active');
         });
     },
 
@@ -204,95 +212,62 @@ const ChartManager = {
             },
         };
 
-        // ── Axis-sync plugin: y2 always mirrors y range ────────────────────
-        const axisSync = {
-            id: 'axisSync',
-            afterUpdate: (chart) => {
-                const y = chart.scales.y;
-                const y2 = chart.scales.y2;
-                if (!y || !y2) return;
-                if (y.min !== y2.min || y.max !== y2.max) {
-                    y2.options.min = y.min;
-                    y2.options.max = y.max;
-                }
-            },
-        };
+        // ── Axis-sync plugin removed — all on same y axis now ──────────
 
-        // ── Dataset builder helpers ────────────────────────────────────────
+        // ── Dataset helpers ────────────────────────────────────────────────
         const bandDs = (label, data, color, hidden = false) => ({
             label, data,
-            yAxisID: 'y',
-            stack: 'bands',
+            yAxisID: 'y', stack: 'bands',
             borderColor: color,
             backgroundColor: color + '28',
-            borderWidth: 1.5,
-            borderDash: DASH,
+            borderWidth: 1.5, borderDash: DASH,
             pointRadius: 0, pointHoverRadius: 3,
-            fill: true,           // fill within the stacked band
+            fill: true,
             tension: 0.35,
-            hidden,
-            order: 5,
+            hidden, order: 5,
         });
 
         const datasets = [
-            // ── Income/benefit bands (stack:'bands', yAxisID:'y') ──────────
-
             // Nettoeinkommen — thicker dashed base
             {
                 label: hasP ? 'Haushaltsnetto' : 'Nettoeinkommen',
                 data: d.raw.netto,
-                yAxisID: 'y',
-                stack: 'bands',
+                yAxisID: 'y', stack: 'bands',
                 borderColor: this.C.netto,
                 backgroundColor: this.C.netto + '28',
-                borderWidth: 2.5,
-                borderDash: DASH,
+                borderWidth: 2.5, borderDash: DASH,
                 pointRadius: 0, pointHoverRadius: 4,
-                fill: true,
-                tension: 0.35,
-                order: 5,
+                fill: true, tension: 0.35, order: 5,
             },
-
-            // Familienbonus tax credit
             ...(d.anyFB ? [bandDs('Familienbonus (Steuerkredit)', d.raw.familienbonus, this.C.familienbonus)] : []),
-
-            // Familienbeihilfe (incl. Kindermehrbetrag)
             ...(d.anyFA ? [bandDs('Familienbeihilfe', d.raw.familienbeihilfe, this.C.familienbeihilfe)] : []),
-
-            // Sozialhilfe
             ...(d.anySH ? [bandDs('Sozialhilfe', d.raw.sozialhilfe, this.C.sozialhilfe)] : []),
-
-            // Wohnbeihilfe
             ...(d.anyWB ? [bandDs('Wohnbeihilfe', d.raw.wohnbeihilfe, this.C.wohnbeihilfe)] : []),
 
-            // ── Wohnkosten (negative band, stacks below zero) ──────────────
+            // Wohnkosten — negative band
             ...(d.anyWK ? [{
                 label: 'Wohnkosten',
                 data: d.raw.wohnkosten.map(v => -v),
-                yAxisID: 'y',
-                stack: 'bands',
+                yAxisID: 'y', stack: 'bands',
                 borderColor: this.C.wohnkosten,
                 backgroundColor: this.C.wohnkostenFill,
-                borderWidth: 1.5,
-                borderDash: DASH,
+                borderWidth: 1.5, borderDash: DASH,
                 pointRadius: 0, pointHoverRadius: 3,
-                fill: true,
-                tension: 0.1,
-                order: 6,
+                fill: true, tension: 0.1, order: 6,
             }] : []),
 
-            // ── Was bleibt — solid green on y2 (unaffected by stacking) ───
+            // Was bleibt — solid green, NOT stacked (no stack property)
             {
                 label: 'Was bleibt',
                 data: d.wasBleibt,
-                yAxisID: 'y2',
+                yAxisID: 'y',
+                // No 'stack' property → renders independently of stacked bands
                 borderColor: this.C.wasBleibt,
                 backgroundColor: this.C.wasBleibtFill,
                 borderWidth: 2.5,
                 pointRadius: 0, pointHoverRadius: 5,
                 fill: 'origin',
-                tension: 0.35,
-                order: 1,
+                tension: 0.35, order: 1,
             },
         ];
 
@@ -308,9 +283,9 @@ const ChartManager = {
             'Was bleibt': idx => d.wasBleibt[idx],
         };
 
-        // ── Build custom legend in the section element ─────────────────────
-        const section = canvas.closest('section') || canvas.parentElement;
-        this._renderCustomLegend(section, datasets, legendMeta);
+        // ── Build custom legend INSIDE chart-container ─────────────────────
+        const chartContainer = canvas.closest('.chart-container') || canvas.parentElement;
+        this._renderCustomLegend(chartContainer, datasets, legendMeta);
 
         this.chart = new Chart(canvas, {
             type: 'line',
@@ -319,13 +294,19 @@ const ChartManager = {
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: { duration: 250 },
+                layout: {
+                    padding: { bottom: 0 },
+                },
                 plugins: {
-                    legend: { display: false },   // using custom HTML legend
+                    legend: { display: false },
                     tooltip: {
                         enabled: false,
                         external: (context) => {
                             const tt = context.tooltip;
-                            if (!tt.dataPoints?.length) return;
+                            if (tt.opacity === 0 || !tt.dataPoints?.length) {
+                                // Don't clear immediately — leave last hover values visible
+                                return;
+                            }
                             this._updateLegendValues(d, tt.dataPoints[0].dataIndex);
                         },
                     },
@@ -335,8 +316,7 @@ const ChartManager = {
                         title: {
                             display: true,
                             text: 'Bruttolohn (€/Monat)',
-                            color: '#94a3b8',
-                            font: { size: 11 },
+                            color: '#94a3b8', font: { size: 11 },
                         },
                         ticks: {
                             color: '#94a3b8', maxRotation: 0, font: { size: 10 },
@@ -345,7 +325,7 @@ const ChartManager = {
                         grid: { color: 'rgba(0,0,0,0.04)' },
                     },
                     y: {
-                        stacked: true,   // stack the 'bands' group
+                        stacked: true,
                         position: 'left',
                         ticks: {
                             color: '#94a3b8', font: { size: 10 },
@@ -353,16 +333,10 @@ const ChartManager = {
                         },
                         grid: { color: 'rgba(0,0,0,0.04)' },
                     },
-                    y2: {
-                        stacked: false,  // Was bleibt — not stacked
-                        position: 'left',
-                        display: false,  // hide axis ticks (y already shows them)
-                        grid: { display: false },
-                    },
                 },
                 interaction: { mode: 'index', intersect: false },
             },
-            plugins: [markerPlugin, axisSync],
+            plugins: [markerPlugin],
         });
     },
 

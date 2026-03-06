@@ -90,6 +90,38 @@
                 <div class="chart-container" style="height: 420px;">
                     <canvas id="incomeChart"></canvas>
                 </div>
+                <!-- Custom legend injected here by chart.js -->
+
+                <!-- Summary Cards -->
+                <div class="summary-cards">
+                    <div class="summary-card highlight">
+                        <span class="card-label">Haushaltskasse gesamt</span>
+                        <span class="card-value" id="totalHousehold">€ 0</span>
+                        <span class="card-detail">Netto + Sozialleistungen</span>
+                    </div>
+                    <div class="summary-card">
+                        <span class="card-label">Nettoeinkommen</span>
+                        <span class="card-value" id="netIncome">€ 0</span>
+                        <span class="card-detail">Nach Steuern &amp; SV</span>
+                    </div>
+                    <div class="summary-card benefits">
+                        <span class="card-label">Sozialleistungen</span>
+                        <span class="card-value" id="totalBenefits">€ 0</span>
+                        <span class="card-detail">Familienbeihilfe, Wohnbeihilfe, etc.</span>
+                    </div>
+                </div>
+
+                <!-- Detailed Breakdown -->
+                <div class="breakdown-section">
+                    <h3>Detaillierte Aufschlüsselung</h3>
+                    <div class="breakdown-table" id="breakdownTable"></div>
+                </div>
+
+                <!-- Recommendations -->
+                <div class="recommendations-section" id="recommendationsSection">
+                    <h3>Empfehlungen</h3>
+                    <div class="recommendations-content" id="recommendationsContent"></div>
+                </div>
             </section>
 
 
@@ -269,45 +301,6 @@
                 </div>
             </section>
 
-            <!-- Results Section -->
-            <section class="results-section glass-card" id="resultsSection">
-                <h2>Ihr Haushaltseinkommen</h2>
-
-                <!-- Summary Cards -->
-                <div class="summary-cards">
-                    <div class="summary-card highlight">
-                        <span class="card-label">Haushaltskasse gesamt</span>
-                        <span class="card-value" id="totalHousehold">€ 0</span>
-                        <span class="card-detail">Netto + Sozialleistungen</span>
-                    </div>
-                    <div class="summary-card">
-                        <span class="card-label">Nettoeinkommen</span>
-                        <span class="card-value" id="netIncome">€ 0</span>
-                        <span class="card-detail">Nach Steuern & SV</span>
-                    </div>
-                    <div class="summary-card benefits">
-                        <span class="card-label">Sozialleistungen</span>
-                        <span class="card-value" id="totalBenefits">€ 0</span>
-                        <span class="card-detail">Familienbeihilfe, Wohnbeihilfe, etc.</span>
-                    </div>
-                </div>
-
-                <!-- Detailed Breakdown -->
-                <div class="breakdown-section">
-                    <h3>Detaillierte Aufschlüsselung</h3>
-                    <div class="breakdown-table" id="breakdownTable">
-                        <!-- Will be populated by JavaScript -->
-                    </div>
-                </div>
-
-                <!-- Recommendations -->
-                <div class="recommendations-section" id="recommendationsSection">
-                    <h3>Empfehlungen</h3>
-                    <div class="recommendations-content" id="recommendationsContent">
-                        <!-- Will be populated by JavaScript -->
-                    </div>
-                </div>
-            </section>
         </main>
 
         <!-- References Section -->
