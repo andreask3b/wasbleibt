@@ -24,6 +24,27 @@ const ChildrenManager = {
     },
 
     /**
+     * Replace all children with a new list
+     * @param {Array<object|number>} children
+     */
+    setChildren(children = []) {
+        this.children = children.map((child, index) => {
+            const normalized = typeof child === 'number' ? { age: child } : child;
+            const careMode = normalized.careMode || (normalized.inChildcare ? (normalized.fullDay ? 'full' : 'half') : 'none');
+            return {
+                id: Date.now() + index,
+                age: normalized.age ?? 5,
+                inChildcare: careMode !== 'none',
+                fullDay: careMode === 'full',
+                careMode
+            };
+        });
+        this.renderChildren();
+        this.updateChildCount();
+        if (typeof FormManager !== 'undefined') FormManager.calculate();
+    },
+
+    /**
      * Remove a child by ID
      */
     removeChild(id) {

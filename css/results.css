@@ -122,15 +122,20 @@
         box-shadow: var(--shadow-md);
     }
 
-    .summary-card.highlight {
-        background: linear-gradient(135deg, rgba(29, 155, 240, 0.12) 0%, rgba(29, 155, 240, 0.06) 100%);
-        border-color: rgba(29, 155, 240, 0.25);
-    }
+.summary-card.highlight {
+    background: linear-gradient(135deg, rgba(29, 155, 240, 0.12) 0%, rgba(29, 155, 240, 0.06) 100%);
+    border-color: rgba(29, 155, 240, 0.25);
+}
 
-    .summary-card.benefits {
-        background: linear-gradient(135deg, rgba(0, 166, 126, 0.1) 0%, rgba(0, 166, 126, 0.05) 100%);
-        border-color: rgba(0, 166, 126, 0.2);
-    }
+.summary-card.highlight.disposable {
+    background: linear-gradient(135deg, rgba(22, 163, 74, 0.16) 0%, rgba(22, 163, 74, 0.06) 100%);
+    border-color: rgba(22, 163, 74, 0.3);
+}
+
+.summary-card.benefits {
+    background: linear-gradient(135deg, rgba(0, 166, 126, 0.1) 0%, rgba(0, 166, 126, 0.05) 100%);
+    border-color: rgba(0, 166, 126, 0.2);
+}
 
     .card-label {
         font-size: var(--font-size-xs);
@@ -148,13 +153,17 @@
         font-variant-numeric: tabular-nums;
     }
 
-    .summary-card.highlight .card-value {
-        color: var(--accent-primary);
-    }
+.summary-card.highlight .card-value {
+    color: var(--accent-primary);
+}
 
-    .summary-card.benefits .card-value {
-        color: var(--highlight-green);
-    }
+.summary-card.highlight.disposable .card-value {
+    color: var(--c-was-bleibt);
+}
+
+.summary-card.benefits .card-value {
+    color: var(--highlight-green);
+}
 
     .card-detail {
         font-size: var(--font-size-xs);
@@ -326,53 +335,100 @@
 
 
     /* Recommendations */
-    .recommendations-section {
-        background: rgba(29, 155, 240, 0.05);
-        border-radius: var(--radius-lg);
-        padding: var(--spacing-lg);
-        border: 1px solid rgba(29, 155, 240, 0.12);
-    }
+.recommendations-section {
+    background: rgba(29, 155, 240, 0.05);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    border: 1px solid rgba(29, 155, 240, 0.12);
+}
 
-    .recommendation-card {
-        display: flex;
-        gap: var(--spacing-md);
-        padding: var(--spacing-md);
-        background: var(--bg-secondary);
-        border-radius: var(--radius-md);
-        margin-top: var(--spacing-md);
-        border-left: 3px solid var(--border-color);
-    }
+.analysis-intro {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
 
-    .recommendation-card.positive {
-        border-left-color: var(--highlight-green);
-    }
+.recommendations-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+}
 
-    .recommendation-card.warning {
-        border-left-color: var(--warning-amber);
-    }
+.recommendation-card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    background: var(--bg-secondary);
+    border-radius: var(--radius-md);
+    border-left: 3px solid var(--border-color);
+    min-height: 160px;
+}
 
-    .recommendation-card.info {
-        border-left-color: var(--accent-primary);
-    }
+.recommendation-card.positive {
+    border-left-color: var(--highlight-green);
+}
 
-    .rec-icon {
-        font-size: 1.25rem;
-        flex-shrink: 0;
-        opacity: 0.8;
-    }
+.recommendation-card.warning {
+    border-left-color: var(--warning-amber);
+}
 
-    .rec-content h4 {
-        font-size: var(--font-size-sm);
-        font-weight: 600;
+.recommendation-card.danger {
+    border-left-color: #dc2626;
+}
+
+.recommendation-card.info {
+    border-left-color: var(--accent-primary);
+}
+
+.rec-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.1rem;
+    height: 2.1rem;
+    border-radius: 999px;
+    font-size: 1rem;
+    flex-shrink: 0;
+    opacity: 0.95;
+    background: var(--bg-tertiary);
+}
+
+.rec-content h4 {
+    font-size: var(--font-size-sm);
+    font-weight: 600;
         margin-bottom: var(--spacing-xs);
         color: var(--text-primary);
     }
 
-    .rec-content p {
-        font-size: var(--font-size-sm);
-        color: var(--text-secondary);
-        line-height: 1.5;
-    }
+.rec-content p {
+    font-size: var(--font-size-sm);
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.rec-metric {
+    font-size: var(--font-size-2xl);
+    font-weight: 700;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+.rec-tag {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
+    font-size: var(--font-size-xs);
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
 
     /* ===========================
    References Section

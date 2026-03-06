@@ -51,71 +51,26 @@
 
             <!-- Example calculation -->
             <section class="info-section glass-card">
-                <h2>Rechenbeispiel: Alleinerziehend mit 2 Kindern</h2>
+                <h2>Live-Szenario: Wo kippt der Arbeitsanreiz?</h2>
+                <p class="section-intro">
+                    Die folgenden Werte werden live mit derselben Logik wie der Rechner erzeugt. So lassen sich
+                    Armutsfalle und Wiedereinstieg ohne abweichende Beispieltabellen zeigen.
+                </p>
+
+                <div class="preset-strip" id="trapPresetStrip"></div>
+                <div class="summary-cards" id="trapSummaryCards"></div>
 
                 <div class="table-wrapper">
                     <table class="calc-table">
-                        <thead>
-                            <tr>
-                                <th>Brutto/Monat</th>
-                                <th>Netto</th>
-                                <th>Sozialhilfe</th>
-                                <th>Wohnbeihilfe</th>
-                                <th>Haushaltskasse</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>€0</td>
-                                <td>€0</td>
-                                <td class="highlight-green">€1.861</td>
-                                <td>€200</td>
-                                <td><strong>€2.061</strong></td>
-                            </tr>
-                            <tr>
-                                <td>€500</td>
-                                <td>€453</td>
-                                <td>€1.408</td>
-                                <td>€150</td>
-                                <td><strong>€2.011</strong></td>
-                            </tr>
-                            <tr class="highlight-row-negative">
-                                <td>€1.000</td>
-                                <td>€823</td>
-                                <td>€1.038</td>
-                                <td>€100</td>
-                                <td class="highlight-red"><strong>€1.961</strong></td>
-                            </tr>
-                            <tr>
-                                <td>€1.500</td>
-                                <td>€1.116</td>
-                                <td>€745</td>
-                                <td>€50</td>
-                                <td><strong>€1.911</strong></td>
-                            </tr>
-                            <tr>
-                                <td>€2.000</td>
-                                <td>€1.409</td>
-                                <td>€452</td>
-                                <td>€0</td>
-                                <td><strong>€1.861</strong></td>
-                            </tr>
-                            <tr class="highlight-row">
-                                <td>€2.500</td>
-                                <td>€1.702</td>
-                                <td>€0</td>
-                                <td>€0</td>
-                                <td class="highlight-green"><strong>€2.121</strong></td>
-                            </tr>
-                        </tbody>
+                        <thead id="trapTableHead"></thead>
+                        <tbody id="trapTableBody"></tbody>
                     </table>
                 </div>
 
-                <div class="info-note warning">
-                    <strong>Das Paradoxon:</strong> Bei €0 Brutto steht dem Haushalt <strong>mehr Geld</strong>
-                    zur Verfügung als bei €1.000-2.000 Brutto! Erst ab ca. €2.500 zahlt sich Arbeit
-                    wirklich aus.
-                </div>
+                <div class="info-note warning" id="trapSummaryNote"></div>
+                <p class="source-note">
+                    <a href="index.html" id="trapPresetLink">Dieses Szenario im Rechner öffnen</a>
+                </p>
             </section>
 
             <!-- Why does this happen? -->
@@ -279,8 +234,8 @@
                     und Bundesland variieren.
                 </p>
                 <p>
-                    <strong>Das ist keine politische Stellungnahme</strong> – wir zeigen nur die faktische
-                    Funktionsweise des Systems.
+                    <strong>Die Bewertung ist offen, die Mechanik nicht:</strong> Die Seite zeigt, wo das aktuelle
+                    System Arbeit für Alleinerziehende und Geringverdienende finanziell unattraktiv macht.
                 </p>
             </section>
         </main>
@@ -295,6 +250,11 @@
             </p>
         </footer>
     </div>
+
+    <script src="js/calculator.js"></script>
+    <script src="js/benefits.js"></script>
+    <script src="js/presets.js"></script>
+    <script src="js/poverty-trap.js"></script>
 </body>
 
 </html>

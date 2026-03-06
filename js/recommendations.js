@@ -1,227 +1,200 @@
-/**
- * Recommendations engine for Austrian Tax Calculator
- * Analyzes income situation and provides advice
- */
-
 const RecommendationsManager = {
-    /**
-     * Generate recommendations based on calculation results
-     * @param {object} formData - User's input data
-     * @param {object} taxResult - Tax calculation result
-     * @param {object} benefits - Benefits calculation result
-     */
     generateRecommendations(formData, taxResult, benefits) {
         const container = document.getElementById('recommendationsContent');
         if (!container) return;
 
-        const recommendations = [];
-
-        // 1. Find trap zones (where earning more doesn't help)
+        const series = ChartManager.buildScenarioSeries(formData);
+        const currentIndex = Math.max(0, Math.min(series.points.length - 1, Math.round(formData.monthlyGross / series.step)));
+        const currentPoint = series.points[currentIndex];
+        const nextPoint = series.points[Math.min(currentIndex + 1, series.points.length - 1)];
+        const previousPoint = series.points[Math.max(currentIndex - 1, 0)];
+        const comparisonPoint = nextPoint.gross > currentPoint.gross ? nextPoint : previousPoint;
+        const grossDelta = Math.abs(comparisonPoint.gross - currentPoint.gross) || series.step;
+        const disposableDeltaRaw = comparisonPoint.gross >= currentPoint.gross
+            ? comparisonPoint.disposableIncome - currentPoint.disposableIncome
+            : currentPoint.disposableIncome - comparisonPoint.disposableIncome;
+        const disposableDeltaPer100 = grossDelta > 0 ? (disposableDeltaRaw / grossDelta) * 100 : 0;
+        const marginalBurden = grossDelta > 0 ? 1 - (disposableDeltaRaw / grossDelta) : 0;
+        const breakEvenPoint = this.findBreakEvenPoint(series.points);
         const trapZones = ChartManager.findTrapZones(formData);
-        const currentGross = formData.monthlyGross;
+        const currentTrap = trapZones.find(zone =>
+            formData.monthlyGross >= zone.fromGross && formData.monthlyGross <= zone.toGross + series.step
+        );
+        const reentryDelta = this.calculateReentryDelta(formData, taxResult, benefits);
 
-        // Check if user is near a trap zone
-        for (const trap of trapZones) {
-            if (currentGross >= trap.fromGross - 200 && currentGross <= trap.toGross + 200) {
-                recommendations.push({
-                    type: 'warning',
-                    icon: '',
-                    title: 'Achtung: Grenzbereich',
-                    text: `Bei einem Bruttoeinkommen zwischen €${trap.fromGross} und €${trap.toGross} kann es sein, ` +
-                        `dass mehr Arbeit nicht zu mehr Haushalt führt. Der Unterschied beträgt ca. €${Math.round(trap.difference)}/Monat.`
-                });
-            }
+        const cards = [
+            this.buildIncrementCard(disposableDeltaPer100),
+            this.buildMarginalBurdenCard(marginalBurden),
+            this.buildBreakEvenCard(formData, breakEvenPoint)
+        ];
+
+        if (currentTrap) {
+            cards.push(this.buildTrapCard(currentTrap));
         }
 
-        // 2. Wohnbeihilfe eligibility
-        const wbName = formData.federalState === 'steiermark' ? 'Wohnunterstützung' : 'Wohnbeihilfe';
-        const stateOffices = {
-            'vienna': 'MA 50 (Wien)',
-            'steiermark': 'Land Steiermark',
-            'upperAustria': 'Land Oberösterreich',
-            'lowerAustria': 'Land Niederösterreich',
-            'salzburg': 'Land Salzburg',
-            'tyrol': 'Land Tirol',
-            'vorarlberg': 'Land Vorarlberg',
-            'carinthia': 'Land Kärnten',
-            'burgenland': 'Land Burgenland'
-        };
-        const stateNames = {
-            'vienna': 'Wien',
-            'steiermark': 'Steiermark',
-            'upperAustria': 'Oberösterreich',
-            'lowerAustria': 'Niederösterreich',
-            'salzburg': 'Salzburg',
-            'tyrol': 'Tirol',
-            'vorarlberg': 'Vorarlberg',
-            'carinthia': 'Kärnten',
-            'burgenland': 'Burgenland'
-        };
-        const wbOffice = stateOffices[formData.federalState] || 'zuständige Landesregierung';
-        const wbRegion = stateNames[formData.federalState] || formData.federalState;
-
-        if (!benefits.wohnbeihilfe.eligible && formData.monthlyRent > 0) {
-            const limit = benefits.wohnbeihilfe.incomeLimit;
-            if (limit && taxResult.net > limit) {
-                const difference = taxResult.net - limit;
-                recommendations.push({
-                    type: 'info',
-                    icon: '',
-                    title: `${wbName} nicht berechtigt`,
-                    text: `Ihr Nettoeinkommen (€${Math.round(taxResult.net)}) liegt €${Math.round(difference)} über der Einkommensgrenze ` +
-                        `für ${wbName} in ${wbRegion} (€${Math.round(limit)} für ${benefits.householdSize} Personen).`
-                });
-            }
-        } else if (benefits.wohnbeihilfe.eligible) {
-            recommendations.push({
+        if (formData.monthlyGross > 0 && Math.abs(reentryDelta) > 1) {
+            cards.push(this.buildReentryCard(formData, reentryDelta));
+        } else if (!currentTrap) {
+            cards.push({
                 type: 'positive',
-                icon: '',
-                title: `${wbName} möglich`,
-                text: `Sie könnten Anspruch auf ca. €${Math.round(benefits.wohnbeihilfe.amount)}/Monat ${wbName} haben. ` +
-                    `Bitte stellen Sie einen Antrag bei ${wbOffice}.`
+                icon: 'OK',
+                tag: 'Stabil',
+                title: 'Keine aktuelle Trap-Zone',
+                metric: this.formatCurrency(currentPoint.disposableIncome),
+                text: 'In Ihrer aktuellen Zone steigt das frei verfügbare Einkommen mit zusätzlichem Brutto zumindest nicht mehr rückwärts.'
             });
         }
 
-        // 3. Familienbonus Plus optimization
-        if (benefits.familienbonus.maxBonus > 0) {
-            const usedPercent = (benefits.familienbonus.usedBonus / benefits.familienbonus.maxBonus * 100).toFixed(0);
-
-            if (benefits.familienbonus.usedBonus < benefits.familienbonus.maxBonus * 0.5) {
-                recommendations.push({
-                    type: 'info',
-                    icon: '',
-                    title: 'Familienbonus Plus nicht voll ausgeschöpft',
-                    text: `Sie nutzen nur ${usedPercent}% des möglichen Familienbonus Plus (€${Math.round(benefits.familienbonus.usedBonus)}/Jahr ` +
-                        `von max. €${benefits.familienbonus.maxBonus}/Jahr). Der Kindermehrbetrag gleicht einen Teil davon aus.`
-                });
-            } else if (usedPercent >= 100) {
-                recommendations.push({
-                    type: 'positive',
-                    icon: '',
-                    title: 'Familienbonus Plus vollständig genutzt',
-                    text: `Sie nutzen den vollen Familienbonus Plus von €${benefits.familienbonus.maxBonus}/Jahr.`
-                });
-            }
-        }
-
-        // 4. Alleinverdiener check
-        if (formData.familyStatus === 'married' && formData.childrenAges.length > 0) {
-            if (benefits.avab.eligible) {
-                recommendations.push({
-                    type: 'positive',
-                    icon: '',
-                    title: 'Alleinverdienerabsetzbetrag',
-                    text: `Sie haben Anspruch auf €${Math.round(benefits.avab.annualCredit)}/Jahr Alleinverdienerabsetzbetrag.`
-                });
-            } else {
-                const limit = BenefitsCalculator.ALLEINVERDIENER.partnerIncomeLimit;
-                recommendations.push({
-                    type: 'info',
-                    icon: '',
-                    title: 'Alleinverdienerabsetzbetrag',
-                    text: `Wenn das Einkommen Ihrer Partner:in unter €${limit}/Jahr liegt, hätten Sie Anspruch auf den Alleinverdienerabsetzbetrag.`
-                });
-            }
-        }
-
-        // 5. Effective tax rate insight
-        if (taxResult.effectiveTotalRate > 0) {
-            recommendations.push({
-                type: 'info',
-                icon: '',
-                title: 'Effektive Abgabenquote',
-                text: `Ihre effektive Abgabenquote (Lohnsteuer + SV) beträgt ${taxResult.effectiveTotalRate.toFixed(1)}%. ` +
-                    `Die Lohnsteuer alleine macht ${taxResult.effectiveTaxRate.toFixed(1)}% aus.`
-            });
-        }
-
-        // 6. Check if working less might be beneficial
-        const optimalPoint = this.findOptimalWorkingPoint(formData, benefits);
-        if (optimalPoint && Math.abs(optimalPoint.gross - currentGross) > 200) {
-            if (optimalPoint.gross < currentGross && optimalPoint.difference < 100) {
-                recommendations.push({
-                    type: 'warning',
-                    icon: '',
-                    title: 'Weniger arbeiten = fast gleich viel verdienen?',
-                    text: `Bei €${optimalPoint.gross} brutto hätten Sie nur €${Math.round(optimalPoint.difference)} weniger ` +
-                        `in der Haushaltskasse - das entspricht einem "Mehrwert" von nur €${(optimalPoint.difference / (currentGross - optimalPoint.gross) * 100).toFixed(0)} Cent pro Euro zusätzlichem Brutto.`
-                });
-            }
-        }
-
-        // Render recommendations
-        if (recommendations.length === 0) {
-            container.innerHTML = `
-                <div class="recommendation-card positive">
-                    <span class="rec-icon"></span>
-                    <div class="rec-content">
-                        <h4>Alles im grünen Bereich</h4>
-                        <p>Keine besonderen Hinweise für Ihre aktuelle Situation.</p>
-                    </div>
+        container.innerHTML = cards.map(card => `
+            <div class="recommendation-card ${card.type}">
+                <span class="rec-icon">${card.icon}</span>
+                <div class="rec-content">
+                    <div class="rec-tag">${card.tag}</div>
+                    <h4>${card.title}</h4>
+                    <div class="rec-metric">${card.metric}</div>
+                    <p>${card.text}</p>
                 </div>
-            `;
-        } else {
-            container.innerHTML = recommendations.map(rec => `
-                <div class="recommendation-card ${rec.type}">
-                    <span class="rec-icon">${rec.icon}</span>
-                    <div class="rec-content">
-                        <h4>${rec.title}</h4>
-                        <p>${rec.text}</p>
-                    </div>
-                </div>
-            `).join('');
-        }
+            </div>
+        `).join('');
     },
 
-    /**
-     * Find optimal working point (where household income per euro is best)
-     * @param {object} formData - User's input data
-     * @param {object} currentBenefits - Current benefits
-     * @returns {object|null} Optimal point info
-     */
-    findOptimalWorkingPoint(formData, currentBenefits) {
-        const currentGross = formData.monthlyGross;
-        const currentTotal = currentBenefits.totalHouseholdIncome;
+    buildIncrementCard(disposableDeltaPer100) {
+        const type = disposableDeltaPer100 < 0 ? 'danger' : disposableDeltaPer100 < 20 ? 'warning' : disposableDeltaPer100 < 50 ? 'info' : 'positive';
+        const tag = disposableDeltaPer100 < 0 ? 'Armutsfalle' : disposableDeltaPer100 < 20 ? 'Kaum Anreiz' : disposableDeltaPer100 < 50 ? 'Mäßiger Anreiz' : 'Lohnend';
+        const metricPrefix = disposableDeltaPer100 >= 0 ? '+' : '';
 
-        // Check points below current income
-        const checkPoints = [
-            currentGross - 500,
-            currentGross - 1000,
-            currentGross - 1500
-        ].filter(p => p >= 0);
+        return {
+            type,
+            icon: '+100',
+            tag,
+            title: 'Nächste 100 € brutto',
+            metric: `${metricPrefix}${this.formatCurrency(disposableDeltaPer100)}`,
+            text: `Von zusätzlichen 100 € brutto kommen aktuell nur ${this.formatCurrency(Math.max(0, disposableDeltaPer100))} frei verfügbar an. ${disposableDeltaPer100 < 0 ? 'Mehr Arbeit verschlechtert Ihre Lage.' : ''}`
+        };
+    },
 
-        let bestPoint = null;
-        let minDifferencePerEuro = Infinity;
+    buildMarginalBurdenCard(marginalBurden) {
+        const burdenPercent = Math.round(marginalBurden * 100);
+        const type = burdenPercent > 100 ? 'danger' : burdenPercent >= 80 ? 'warning' : burdenPercent >= 50 ? 'info' : 'positive';
+        const tag = burdenPercent > 100 ? 'Arbeit kostet' : burdenPercent >= 80 ? 'Hoher Entzug' : burdenPercent >= 50 ? 'Spürbarer Entzug' : 'Arbeitsanreiz';
 
-        for (const testGross of checkPoints) {
-            const taxResult = TaxCalculator.calculateMonthlyNet(testGross);
-            const benefits = BenefitsCalculator.calculateAllBenefits({
-                ...formData,
-                monthlyGross: testGross,
-                monthlyNet: taxResult.net,
-                annualTax: taxResult.annualTax
-            });
+        return {
+            type,
+            icon: 'EMTR',
+            tag,
+            title: 'Effektive Grenzbelastung',
+            metric: `${burdenPercent} %`,
+            text: burdenPercent > 100
+                ? 'Die Kombination aus Abgaben, Leistungsentzug und Fixkosten frisst mehr weg als hinzukommt.'
+                : 'So viel vom nächsten Euro Brutto geht durch Abgaben und wegfallende Leistungen verloren.'
+        };
+    },
 
-            const grossDifference = currentGross - testGross;
-            const totalDifference = currentTotal - benefits.totalHouseholdIncome;
-            const differencePerEuro = grossDifference > 0 ? totalDifference / grossDifference : Infinity;
-
-            if (differencePerEuro < minDifferencePerEuro && differencePerEuro < 0.5) {
-                minDifferencePerEuro = differencePerEuro;
-                bestPoint = {
-                    gross: testGross,
-                    total: benefits.totalHouseholdIncome,
-                    difference: totalDifference,
-                    differencePerEuro: differencePerEuro
-                };
-            }
+    buildBreakEvenCard(formData, breakEvenPoint) {
+        if (!breakEvenPoint) {
+            return {
+                type: 'warning',
+                icon: '≈',
+                tag: 'Noch offen',
+                title: 'Besser als ohne Arbeit',
+                metric: 'Noch nicht erreicht',
+                text: 'Im aktuell berechneten Bereich liegt das frei verfügbare Einkommen noch nicht klar über dem Niveau ohne Erwerbseinkommen.'
+            };
         }
 
-        return bestPoint;
+        const difference = breakEvenPoint.gross - formData.monthlyGross;
+        const detail = difference > 0
+            ? `Von Ihrer aktuellen Eingabe fehlen noch etwa ${this.formatCurrency(difference)} brutto pro Monat.`
+            : 'Sie liegen bereits über dem Niveau ohne Erwerbseinkommen.';
+
+        return {
+            type: difference > 0 ? 'info' : 'positive',
+            icon: '↗',
+            tag: 'Schwelle',
+            title: 'Besser als ohne Erwerbsarbeit',
+            metric: this.formatCurrency(breakEvenPoint.gross),
+            text: `${detail} Entscheidend ist der Vergleich mit dem frei verfügbaren Einkommen bei 0 € Brutto.`
+        };
+    },
+
+    buildTrapCard(trap) {
+        return {
+            type: 'danger',
+            icon: '−',
+            tag: 'Armutsfalle',
+            title: 'Ihre aktuelle Zone frisst Einkommen',
+            metric: `−${this.formatCurrency(trap.difference)}`,
+            text: `Zwischen ${this.formatCurrency(trap.fromGross)} und ${this.formatCurrency(trap.toGross)} brutto fällt das frei verfügbare Einkommen statt zu steigen.`
+        };
+    },
+
+    buildReentryCard(formData, reentryDelta) {
+        const isActive = !!formData.wiedereinsteiger;
+        const type = isActive ? 'warning' : reentryDelta > 200 ? 'positive' : reentryDelta > 0 ? 'info' : 'warning';
+        const title = isActive ? 'Wenn der Freibetrag endet' : 'Mit Wiedereinsteigerfreibetrag';
+        const metric = `${reentryDelta >= 0 ? '+' : ''}${this.formatCurrency(reentryDelta)}`;
+        const text = isActive
+            ? `Fällt der Freibetrag weg, sinkt Ihr frei verfügbares Einkommen ungefähr um ${this.formatCurrency(Math.abs(reentryDelta))} pro Monat.`
+            : `Mit dem Freibetrag hätten Sie ungefähr ${this.formatCurrency(Math.abs(reentryDelta))} mehr frei verfügbar pro Monat.`;
+
+        return {
+            type,
+            icon: '35%',
+            tag: isActive ? 'Befristet' : 'Hebel',
+            title,
+            metric,
+            text
+        };
+    },
+
+    calculateReentryDelta(formData, taxResult, benefits) {
+        if (formData.monthlyGross <= 0) {
+            return 0;
+        }
+
+        const toggledFormData = {
+            ...formData,
+            wiedereinsteiger: !formData.wiedereinsteiger
+        };
+
+        let partnerNetIncome = 0;
+        let combinedMonthlyNet = taxResult.net;
+
+        if (formData.familyStatus === 'married' && formData.partnerIncome > 0) {
+            const partnerTaxResult = TaxCalculator.calculateMonthlyNet(formData.partnerIncome);
+            partnerNetIncome = partnerTaxResult.net;
+            combinedMonthlyNet += partnerTaxResult.net;
+        }
+
+        const alternativeBenefits = BenefitsCalculator.calculateAllBenefits({
+            ...toggledFormData,
+            monthlyNet: taxResult.net,
+            partnerNetIncome,
+            combinedMonthlyNet,
+            annualTax: taxResult.annualTax
+        });
+
+        return formData.wiedereinsteiger
+            ? alternativeBenefits.disposableIncome - benefits.disposableIncome
+            : alternativeBenefits.disposableIncome - benefits.disposableIncome;
+    },
+
+    findBreakEvenPoint(points) {
+        if (!points.length) return null;
+        const baseline = points[0].disposableIncome;
+        return points.find(point => point.gross > 0 && point.disposableIncome >= baseline + 25) || null;
+    },
+
+    formatCurrency(value) {
+        return new Intl.NumberFormat('de-AT', {
+            style: 'currency',
+            currency: 'EUR',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(Math.round(value));
     }
 };
 
-// Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = RecommendationsManager;
 }

@@ -37,21 +37,22 @@
                 <h1>was-bleibt.at</h1>
             </div>
             <p class="tagline">Ihr tatsächliches Haushaltseinkommen in Österreich</p>
+            <p class="data-year-badge" id="dataYearBadge">Rechenstand 2025</p>
         </header>
 
         <!-- Sticky Result Bar (appears on scroll) -->
         <div class="sticky-result-bar" id="stickyResultBar">
             <div class="sticky-content">
                 <div class="sticky-item">
+                    <span class="sticky-label">Was bleibt</span>
+                    <span class="sticky-value highlight" id="stickyDisposable">€ 0</span>
+                </div>
+                <div class="sticky-item">
                     <span class="sticky-label">Haushaltskasse</span>
-                    <span class="sticky-value highlight" id="stickyTotal">€ 0</span>
+                    <span class="sticky-value" id="stickyTotal">€ 0</span>
                 </div>
                 <div class="sticky-item">
-                    <span class="sticky-label">Netto</span>
-                    <span class="sticky-value" id="stickyNet">€ 0</span>
-                </div>
-                <div class="sticky-item">
-                    <span class="sticky-label">Sozialleistungen</span>
+                    <span class="sticky-label">Transfers</span>
                     <span class="sticky-value benefits" id="stickyBenefits">€ 0</span>
                 </div>
                 <button class="sticky-share-btn" id="shareBtn" title="Link teilen">
@@ -80,7 +81,11 @@
         <main class="main-content">
             <!-- Chart Section (Hero) -->
             <section class="chart-hero-section glass-card">
-                <h2>Ihr Einkommensprofil</h2>
+                <h2>Was bleibt bei mehr Arbeit?</h2>
+                <p class="chart-description">
+                    Die grüne Linie zeigt, was nach Wohnen und Kinderbetreuung wirklich frei verfügbar bleibt.
+                    Genau dort wird sichtbar, ob sich zusätzliche Arbeit auszahlt oder in der Armutsfalle verpufft.
+                </p>
                 <div class="chart-container" style="height: 420px;">
                     <canvas id="incomeChart"></canvas>
                 </div>
@@ -92,27 +97,41 @@
             <section class="input-section glass-card">
                 <h2>Ihre Situation</h2>
 
+                <div class="preset-strip" id="presetStrip">
+                    <button type="button" class="preset-btn" data-preset="single-parent-trap">
+                        <span class="preset-title">Alleinerziehend, 2 Kinder</span>
+                        <span class="preset-desc">Teilzeit, Betreuung, Wien</span>
+                    </button>
+                    <button type="button" class="preset-btn" data-preset="reentry-parent">
+                        <span class="preset-title">Wiedereinstieg 20h</span>
+                        <span class="preset-desc">1 Kind, Miete, Freibetrag</span>
+                    </button>
+                    <button type="button" class="preset-btn" data-preset="low-earner-rent">
+                        <span class="preset-title">Geringverdienst</span>
+                        <span class="preset-desc">25h, Miete, kaum Anreiz</span>
+                    </button>
+                </div>
+
                 <!-- Block 1: Familienstand & Kinder -->
                 <div class="input-block">
                     <div class="block-label">🧑 Familienstand & Kinder</div>
 
                     <!-- Compact single row: toggle + children counter -->
                     <div class="status-children-row">
-                        <!-- Single toggle button -->
-                        <button type="button" class="status-toggle-btn" id="statusToggleBtn" data-status="single">
-                            <svg class="toggle-icon toggle-icon-single" viewBox="0 0 64 64" fill="currentColor">
-                                <circle cx="32" cy="20" r="12" />
-                                <path d="M16 56c0-13 7-20 16-20s16 7 16 20" />
-                            </svg>
-                            <svg class="toggle-icon toggle-icon-married" viewBox="0 0 64 64" fill="currentColor"
-                                style="display:none">
-                                <circle cx="22" cy="20" r="10" />
-                                <circle cx="42" cy="20" r="10" />
-                                <path d="M8 56c0-11 6-17 14-17s14 6 14 17" />
-                                <path d="M28 56c0-11 6-17 14-17s14 6 14 17" />
-                            </svg>
-                            <span class="toggle-label-text">Alleinstehend</span>
-                        </button>
+                        <div class="household-picker" id="householdPicker" role="group" aria-label="Haushaltstyp">
+                            <button type="button" class="household-option active" data-status="single">
+                                <span class="household-icon">🧍</span>
+                                <span class="household-label">Alleinstehend</span>
+                            </button>
+                            <button type="button" class="household-option" data-status="singleParent">
+                                <span class="household-icon">🧒</span>
+                                <span class="household-label">Alleinerziehend</span>
+                            </button>
+                            <button type="button" class="household-option" data-status="married">
+                                <span class="household-icon">👫</span>
+                                <span class="household-label">Paar</span>
+                            </button>
+                        </div>
 
                         <!-- Children stepper -->
                         <div class="children-stepper">
@@ -134,6 +153,7 @@
                     <input type="hidden" id="familyStatus" value="single">
                     <!-- Legacy IDs for backward compat (hidden) -->
                     <span id="statusSingle" data-status="single" style="display:none"></span>
+                    <span id="statusSingleParent" data-status="singleParent" style="display:none"></span>
                     <span id="statusMarried" data-status="married" style="display:none"></span>
                     <div id="childCounter" style="display:none"></div>
                 </div>
@@ -143,8 +163,18 @@
                 <div class="input-block">
                     <div class="block-label">💶 Einkommen</div>
 
+                    <div class="income-mode-toggle">
+                        <label class="period-option">
+                            <input type="radio" name="incomeMode" value="salary" checked>
+                            <span>Bruttogehalt</span>
+                        </label>
+                        <label class="period-option">
+                            <input type="radio" name="incomeMode" value="hours">
+                            <span>Stundenlohn & Stunden</span>
+                        </label>
+                    </div>
 
-                    <div class="income-header">
+                    <div class="income-header" id="periodToggleGroup">
                         <div class="period-toggle">
                             <label class="period-option">
                                 <input type="radio" name="incomePeriod" value="monthly" checked>
@@ -169,6 +199,34 @@
                                         placeholder="2.700">
                                     <span class="input-suffix" id="incomeSuffix1">€/Monat</span>
                                 </div>
+                            </div>
+                        </div>
+
+                        <div class="income-field" id="hoursIncomeGroup" style="display: none;">
+                            <label for="hourlyWage">Mein Brutto-Stundenlohn</label>
+                            <div class="slider-wrapper">
+                                <input type="range" id="hourlyWageSlider" min="8" max="35" step="0.5" value="14"
+                                    class="range-slider">
+                                <div class="input-wrapper large slider-input">
+                                    <input type="number" id="hourlyWage" min="0" max="100" step="0.5" value="14"
+                                        placeholder="14">
+                                    <span class="input-suffix">€/Stunde</span>
+                                </div>
+                            </div>
+
+                            <label for="weeklyHours">Wochenstunden</label>
+                            <div class="slider-wrapper">
+                                <input type="range" id="weeklyHoursSlider" min="0" max="40" step="1" value="20"
+                                    class="range-slider">
+                                <div class="input-wrapper large slider-input">
+                                    <input type="number" id="weeklyHours" min="0" max="80" step="1" value="20"
+                                        placeholder="20">
+                                    <span class="input-suffix">Std./Woche</span>
+                                </div>
+                            </div>
+
+                            <div class="derived-income-hint" id="derivedIncomeHint">
+                                Entspricht rund €0 brutto pro Monat.
                             </div>
                         </div>
 
@@ -266,24 +324,29 @@
 
             <!-- Results Section -->
             <section class="results-section glass-card" id="resultsSection">
-                <h2>Ihr Haushaltseinkommen</h2>
+                <h2>Ihre Lage</h2>
 
                 <!-- Summary Cards -->
                 <div class="summary-cards">
-                    <div class="summary-card highlight">
-                        <span class="card-label">Haushaltskasse gesamt</span>
-                        <span class="card-value" id="totalHousehold">€ 0</span>
-                        <span class="card-detail">Netto + Sozialleistungen</span>
+                    <div class="summary-card highlight disposable">
+                        <span class="card-label">Was bleibt</span>
+                        <span class="card-value" id="disposableIncome">€ 0</span>
+                        <span class="card-detail">Nach Wohnen und Kinderbetreuung frei verfügbar</span>
                     </div>
                     <div class="summary-card">
-                        <span class="card-label">Nettoeinkommen</span>
+                        <span class="card-label">Haushaltskasse gesamt</span>
+                        <span class="card-value" id="totalHousehold">€ 0</span>
+                        <span class="card-detail">Netto, Steuerentlastung und Transfers</span>
+                    </div>
+                    <div class="summary-card">
+                        <span class="card-label">Netto &amp; Steuergutschriften</span>
                         <span class="card-value" id="netIncome">€ 0</span>
-                        <span class="card-detail">Nach Steuern &amp; SV</span>
+                        <span class="card-detail">Arbeitseinkommen nach Steuer und SV</span>
                     </div>
                     <div class="summary-card benefits">
-                        <span class="card-label">Sozialleistungen</span>
+                        <span class="card-label">Transfers</span>
                         <span class="card-value" id="totalBenefits">€ 0</span>
-                        <span class="card-detail">Familienbeihilfe, Wohnbeihilfe, etc.</span>
+                        <span class="card-detail">Familienbeihilfe, Sozialhilfe, Wohnbeihilfe</span>
                     </div>
                 </div>
 
@@ -295,7 +358,11 @@
 
                 <!-- Recommendations -->
                 <div class="recommendations-section" id="recommendationsSection">
-                    <h3>Empfehlungen</h3>
+                    <h3>Anreizanalyse</h3>
+                    <div class="analysis-intro">
+                        Zusätzliche Arbeit zählt nur dann, wenn davon nach dem Verlust von Leistungen und Fixkosten
+                        tatsächlich mehr übrig bleibt.
+                    </div>
                     <div class="recommendations-content" id="recommendationsContent"></div>
                 </div>
             </section>
@@ -358,6 +425,7 @@
     <!-- Scripts -->
     <script src="js/calculator.js"></script>
     <script src="js/benefits.js"></script>
+    <script src="js/presets.js"></script>
     <script src="js/chart.js"></script>
     <script src="js/ui-state.js"></script>
     <script src="js/children.js"></script>

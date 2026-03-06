@@ -1,14 +1,12 @@
-/**
- * UI State Module
- * Handles status toggles, period toggles, sticky bar, and UI defaults
- */
-
 const UIState = {
-    // Default values for single vs married households
     defaults: {
         single: {
             rent: 700,
             apartmentSize: 60
+        },
+        singleParent: {
+            rent: 850,
+            apartmentSize: 70
         },
         married: {
             partnerIncome: 1800,
@@ -17,131 +15,161 @@ const UIState = {
         }
     },
 
-    // Persists partner income when switching away from "married"
     _savedPartnerIncome: null,
 
-    /**
-     * Handle status toggle (Alleinstehend ↔ Verheiratet)
-     * Works with either the old two-card layout or the new single toggle button
-     */
-    handleStatusToggle(status) {
-        // Update hidden field
+    handleStatusToggle(status, options = {}) {
+        const { skipCalculation = false } = options;
         document.getElementById('familyStatus').value = status;
 
-        // Update legacy two-card layout (if present)
+        document.querySelectorAll('.household-option').forEach(button => {
+            button.classList.toggle('active', button.dataset.status === status);
+        });
+
         document.querySelectorAll('.status-card').forEach(card => {
             card.classList.toggle('active', card.dataset.status === status);
         });
 
-        // Update new single toggle button
-        const toggleBtn = document.getElementById('statusToggleBtn');
-        if (toggleBtn) {
-            toggleBtn.dataset.status = status;
-            const isMarried = status === 'married';
-            const iconSingle = toggleBtn.querySelector('.toggle-icon-single');
-            const iconMarried = toggleBtn.querySelector('.toggle-icon-married');
-            const labelEl = toggleBtn.querySelector('.toggle-label-text');
-            if (iconSingle) iconSingle.style.display = isMarried ? 'none' : '';
-            if (iconMarried) iconMarried.style.display = isMarried ? '' : 'none';
-            if (labelEl) labelEl.textContent = isMarried ? 'Verheiratet' : 'Alleinstehend';
-            toggleBtn.classList.toggle('is-married', isMarried);
-        }
-
-        // Get input elements
         const income2Group = document.getElementById('income2Group');
         const partnerIncomeInput = document.getElementById('partnerIncome');
+        const partnerSlider = document.getElementById('partnerIncomeSlider');
         const housingCostInput = document.getElementById('housingCost');
+        const housingCostSlider = document.getElementById('housingCostSlider');
         const apartmentSizeInput = document.getElementById('apartmentSize');
+        const apartmentSizeSlider = document.getElementById('apartmentSizeSlider');
 
         if (status === 'married') {
-            income2Group.style.display = 'block';
+            if (income2Group) income2Group.style.display = 'block';
 
-            // Restore saved partner income (or use default if first switch)
             const restoreValue = this._savedPartnerIncome !== null
                 ? this._savedPartnerIncome
                 : this.defaults.married.partnerIncome;
-            partnerIncomeInput.value = restoreValue;
-            const partnerSlider = document.getElementById('partnerIncomeSlider');
-            if (partnerSlider) partnerSlider.value = restoreValue;
 
-            // Adjust housing defaults when switching from single
-            if (parseFloat(housingCostInput.value) === this.defaults.single.rent) {
-                housingCostInput.value = this.defaults.married.rent;
-                const slider = document.getElementById('housingCostSlider');
-                if (slider) slider.value = this.defaults.married.rent;
+            if (partnerIncomeInput && (!parseFloat(partnerIncomeInput.value) || parseFloat(partnerIncomeInput.value) === 0)) {
+                partnerIncomeInput.value = restoreValue;
             }
-            if (parseFloat(apartmentSizeInput.value) === this.defaults.single.apartmentSize) {
+            if (partnerSlider && (!parseFloat(partnerSlider.value) || parseFloat(partnerSlider.value) === 0)) {
+                partnerSlider.value = restoreValue;
+            }
+
+            if (housingCostInput && [this.defaults.single.rent, this.defaults.singleParent.rent].includes(parseFloat(housingCostInput.value))) {
+                housingCostInput.value = this.defaults.married.rent;
+                if (housingCostSlider) housingCostSlider.value = this.defaults.married.rent;
+            }
+
+            if (apartmentSizeInput && [this.defaults.single.apartmentSize, this.defaults.singleParent.apartmentSize].includes(parseFloat(apartmentSizeInput.value))) {
                 apartmentSizeInput.value = this.defaults.married.apartmentSize;
-                const slider = document.getElementById('apartmentSizeSlider');
-                if (slider) slider.value = this.defaults.married.apartmentSize;
+                if (apartmentSizeSlider) apartmentSizeSlider.value = this.defaults.married.apartmentSize;
             }
         } else {
-            // Save the current partner income before hiding
-            const currentPartnerIncome = parseFloat(partnerIncomeInput.value) || 0;
+            const currentPartnerIncome = parseFloat(partnerIncomeInput?.value) || 0;
             if (currentPartnerIncome > 0) {
                 this._savedPartnerIncome = currentPartnerIncome;
             }
 
-            income2Group.style.display = 'none';
-            partnerIncomeInput.value = 0;
-            const partnerSlider = document.getElementById('partnerIncomeSlider');
+            if (income2Group) income2Group.style.display = 'none';
+            if (partnerIncomeInput) partnerIncomeInput.value = 0;
             if (partnerSlider) partnerSlider.value = 0;
 
-            // Reset to single defaults if at married defaults
-            if (parseFloat(housingCostInput.value) === this.defaults.married.rent) {
-                housingCostInput.value = this.defaults.single.rent;
-                const slider = document.getElementById('housingCostSlider');
-                if (slider) slider.value = this.defaults.single.rent;
+            const defaults = this.defaults[status] || this.defaults.single;
+            const currentRent = parseFloat(housingCostInput?.value) || 0;
+            const currentSize = parseFloat(apartmentSizeInput?.value) || 0;
+
+            if (housingCostInput && [this.defaults.single.rent, this.defaults.singleParent.rent, this.defaults.married.rent].includes(currentRent)) {
+                housingCostInput.value = defaults.rent;
+                if (housingCostSlider) housingCostSlider.value = defaults.rent;
             }
-            if (parseFloat(apartmentSizeInput.value) === this.defaults.married.apartmentSize) {
-                apartmentSizeInput.value = this.defaults.single.apartmentSize;
-                const slider = document.getElementById('apartmentSizeSlider');
-                if (slider) slider.value = this.defaults.single.apartmentSize;
+
+            if (apartmentSizeInput && [this.defaults.single.apartmentSize, this.defaults.singleParent.apartmentSize, this.defaults.married.apartmentSize].includes(currentSize)) {
+                apartmentSizeInput.value = defaults.apartmentSize;
+                if (apartmentSizeSlider) apartmentSizeSlider.value = defaults.apartmentSize;
             }
         }
 
-        if (typeof FormManager !== 'undefined') FormManager.calculate();
+        this.syncIncomeModeUI();
+
+        if (!skipCalculation && typeof FormManager !== 'undefined') {
+            FormManager.calculate();
+        }
     },
 
-    /**
-     * Handle period toggle (monthly/yearly)
-     */
+    handleIncomeModeToggle(mode, options = {}) {
+        const { skipCalculation = false } = options;
+
+        document.querySelectorAll('[name="incomeMode"]').forEach(radio => {
+            radio.checked = radio.value === mode;
+        });
+
+        this.syncIncomeModeUI();
+
+        if (typeof FormManager !== 'undefined') {
+            FormManager.syncDerivedIncomeHint();
+        }
+
+        if (!skipCalculation && typeof FormManager !== 'undefined') {
+            FormManager.calculate();
+        }
+    },
+
+    syncIncomeModeUI() {
+        const mode = document.querySelector('[name="incomeMode"]:checked')?.value || 'salary';
+        const familyStatus = document.getElementById('familyStatus')?.value || 'single';
+        const income1Group = document.getElementById('income1Group');
+        const hoursIncomeGroup = document.getElementById('hoursIncomeGroup');
+        const periodToggleGroup = document.getElementById('periodToggleGroup');
+        const incomeLabel2 = document.getElementById('incomeLabel2');
+        const incomePeriod = document.querySelector('[name="incomePeriod"]:checked')?.value || 'monthly';
+        const isYearly = incomePeriod === 'yearly';
+
+        if (income1Group) income1Group.style.display = mode === 'salary' ? 'block' : 'none';
+        if (hoursIncomeGroup) hoursIncomeGroup.style.display = mode === 'hours' ? 'block' : 'none';
+
+        if (periodToggleGroup) {
+            periodToggleGroup.style.display = mode === 'salary' || familyStatus === 'married' ? '' : 'none';
+        }
+
+        if (mode === 'hours' && incomeLabel2) {
+            incomeLabel2.innerHTML = `Partner:in verdient brutto <span id="periodLabel2">${isYearly ? 'jährlich' : 'monatlich'}</span>`;
+        }
+    },
+
     handlePeriodToggle(period) {
         const isYearly = period === 'yearly';
-
-        // Update labels
         const periodText = isYearly ? 'jährlich' : 'monatlich';
         const suffix = isYearly ? '€/Jahr' : '€/Monat';
+
+        document.querySelectorAll('[name="incomePeriod"]').forEach(radio => {
+            radio.checked = radio.value === period;
+        });
+
+        const income1 = document.getElementById('grossIncome');
+        const income2 = document.getElementById('partnerIncome');
+        const wasYearly = income1?.dataset.period === 'yearly';
 
         document.getElementById('periodLabel1').textContent = periodText;
         document.getElementById('periodLabel2').textContent = periodText;
         document.getElementById('incomeSuffix1').textContent = suffix;
         document.getElementById('incomeSuffix2').textContent = suffix;
 
-        // Convert current values
-        const income1 = document.getElementById('grossIncome');
-        const income2 = document.getElementById('partnerIncome');
-        const wasYearly = income1.dataset.period === 'yearly';
-
-        if (wasYearly !== isYearly) {
+        if (income1 && income2 && wasYearly !== isYearly) {
             if (isYearly) {
-                income1.value = Math.round(parseFloat(income1.value || 0) * 14);
-                income2.value = Math.round(parseFloat(income2.value || 0) * 14);
+                income1.value = Math.round((parseFloat(income1.value) || 0) * 14);
+                income2.value = Math.round((parseFloat(income2.value) || 0) * 14);
             } else {
-                income1.value = Math.round(parseFloat(income1.value || 0) / 14);
-                income2.value = Math.round(parseFloat(income2.value || 0) / 14);
+                income1.value = Math.round((parseFloat(income1.value) || 0) / 14);
+                income2.value = Math.round((parseFloat(income2.value) || 0) / 14);
             }
         }
 
-        income1.dataset.period = period;
-        income2.dataset.period = period;
+        if (income1) income1.dataset.period = period;
+        if (income2) income2.dataset.period = period;
 
-        if (typeof FormManager !== 'undefined') FormManager.calculate();
+        this.syncIncomeModeUI();
+
+        if (typeof FormManager !== 'undefined') {
+            FormManager.calculate();
+        }
     },
 
-    /**
-     * Initialize sticky result bar
-     */
     initStickyBar() {
         const stickyBar = document.getElementById('stickyResultBar');
         const inputSection = document.querySelector('.input-section');
@@ -152,14 +180,9 @@ const UIState = {
         let hasInteracted = false;
 
         const showStickyBar = () => {
-            if (!hasInteracted) hasInteracted = true;
-
-            if (header) {
-                const headerBottom = header.getBoundingClientRect().bottom;
-                if (headerBottom < 0) {
-                    stickyBar.classList.add('visible');
-                }
-            } else {
+            hasInteracted = true;
+            const headerBottom = header ? header.getBoundingClientRect().bottom : -1;
+            if (headerBottom < 0) {
                 stickyBar.classList.add('visible');
             }
         };
@@ -171,7 +194,6 @@ const UIState = {
             if (!hasInteracted) return;
 
             const headerBottom = header ? header.getBoundingClientRect().bottom : -1;
-
             if (headerBottom > 0) {
                 stickyBar.classList.remove('visible');
             } else {
@@ -180,11 +202,8 @@ const UIState = {
         });
     },
 
-    /**
-     * Update sticky bar values
-     */
-    updateStickyBar(totalHousehold, netIncome, benefits) {
-        const formatCurrency = (value) => {
+    updateStickyBar(disposableIncome, totalHousehold, benefits) {
+        const formatCurrency = value => {
             return new Intl.NumberFormat('de-AT', {
                 style: 'currency',
                 currency: 'EUR',
@@ -193,32 +212,27 @@ const UIState = {
             }).format(value);
         };
 
+        document.getElementById('stickyDisposable').textContent = formatCurrency(disposableIncome);
         document.getElementById('stickyTotal').textContent = formatCurrency(totalHousehold);
-        document.getElementById('stickyNet').textContent = formatCurrency(netIncome);
         document.getElementById('stickyBenefits').textContent = '+' + formatCurrency(benefits);
     },
 
-    /**
-     * Update housing cost label & hint based on housing type dropdown
-     * Options: rent | owned | loan
-     */
     updateHousingLabel(type) {
         const labelSpan = document.getElementById('housingCostLabel');
         const hint = document.querySelector('#housingCostGroup .input-hint');
 
         const config = {
-            'rent': { label: 'Miete', hint: 'Hauptmietzins ohne Betriebskosten' },
-            'owned': { label: 'Wohnnebenkosten', hint: 'Monatliche Betriebskosten (ohne Kredit)' },
-            'loan': { label: 'Kreditrate + Nebenkosten', hint: 'Monatliche Kreditrate inkl. Betriebskosten' },
+            rent: { label: 'Miete', hint: 'Hauptmietzins ohne Betriebskosten' },
+            owned: { label: 'Wohnnebenkosten', hint: 'Monatliche Betriebskosten (ohne Kredit)' },
+            loan: { label: 'Kreditrate + Nebenkosten', hint: 'Monatliche Kreditrate inkl. Betriebskosten' }
         };
 
-        const cfg = config[type] || config['rent'];
+        const cfg = config[type] || config.rent;
         if (labelSpan) labelSpan.textContent = cfg.label;
         if (hint) hint.textContent = cfg.hint;
     }
 };
 
-// Export for use in other modules
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = UIState;
 }
