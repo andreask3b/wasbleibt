@@ -5,7 +5,7 @@
 
 // Initialize application when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🇦🇹 WasBleibt.at - Österreich Steuer- & Sozialleistungsrechner');
+    console.log('WasBleibt.at - Österreich Steuer- & Sozialleistungsrechner');
 
     // Load benefits data from JSON
     await BenefitsCalculator.loadData();
@@ -23,10 +23,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     FormManager.init();
 
     // Log initialization
-    console.log('✅ Anwendung initialisiert');
-    console.log(`📊 Steuerberechnung: Lohnsteuertarif ${dataYear}`);
-    console.log(`👨‍👩‍👧 Familienbeihilfe: Werte ${dataYear}`);
-    console.log(`🏠 Wohnbeihilfe: Alle Bundesländer ${dataYear}`);
+    console.log('Anwendung initialisiert');
+    console.log(`Steuerberechnung: Lohnsteuertarif ${dataYear}`);
+    console.log(`Familienbeihilfe: Werte ${dataYear}`);
+    console.log(`Wohnbeihilfe: Alle Bundesländer ${dataYear}`);
 });
 
 // Global error handler for debugging

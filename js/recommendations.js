@@ -39,9 +39,9 @@ const RecommendationsManager = {
                 type: 'positive',
                 icon: 'OK',
                 tag: 'Stabil',
-                title: 'Keine aktuelle Trap-Zone',
+                title: 'Mehrarbeit wirkt aktuell positiv',
                 metric: this.formatCurrency(currentPoint.disposableIncome),
-                text: 'In Ihrer aktuellen Zone steigt das frei verfügbare Einkommen mit zusätzlichem Brutto zumindest nicht mehr rückwärts.'
+                text: 'In Ihrer aktuellen Zone steigt das frei verfügbare Einkommen mit zusätzlichem Brutto zumindest nicht rückwärts.'
             });
         }
 
@@ -69,7 +69,7 @@ const RecommendationsManager = {
             tag,
             title: 'Nächste 100 € brutto',
             metric: `${metricPrefix}${this.formatCurrency(disposableDeltaPer100)}`,
-            text: `Von zusätzlichen 100 € brutto kommen aktuell nur ${this.formatCurrency(Math.max(0, disposableDeltaPer100))} frei verfügbar an. ${disposableDeltaPer100 < 0 ? 'Mehr Arbeit verschlechtert Ihre Lage.' : ''}`
+            text: `So viel von zusätzlichen 100 € brutto bleibt nach Abgaben, Transfers und Fixkosten frei verfügbar. ${disposableDeltaPer100 < 0 ? 'Mehr Arbeit verschlechtert hier den Monatsbetrag.' : ''}`
         };
     },
 
@@ -80,13 +80,13 @@ const RecommendationsManager = {
 
         return {
             type,
-            icon: 'EMTR',
+            icon: '€',
             tag,
-            title: 'Effektive Grenzbelastung',
+            title: 'Vom nächsten Euro geht verloren',
             metric: `${burdenPercent} %`,
             text: burdenPercent > 100
                 ? 'Die Kombination aus Abgaben, Leistungsentzug und Fixkosten frisst mehr weg als hinzukommt.'
-                : 'So viel vom nächsten Euro Brutto geht durch Abgaben und wegfallende Leistungen verloren.'
+                : 'Dieser Anteil des nächsten Brutto-Euro geht durch Abgaben, wegfallende Leistungen oder Fixkosten verloren.'
         };
     },
 
@@ -96,7 +96,7 @@ const RecommendationsManager = {
                 type: 'warning',
                 icon: '≈',
                 tag: 'Noch offen',
-                title: 'Besser als ohne Arbeit',
+                title: 'Ab wann Arbeit mehr bringt',
                 metric: 'Noch nicht erreicht',
                 text: 'Im aktuell berechneten Bereich liegt das frei verfügbare Einkommen noch nicht klar über dem Niveau ohne Erwerbseinkommen.'
             };
@@ -111,7 +111,7 @@ const RecommendationsManager = {
             type: difference > 0 ? 'info' : 'positive',
             icon: '↗',
             tag: 'Schwelle',
-            title: 'Besser als ohne Erwerbsarbeit',
+            title: 'Ab wann Arbeit mehr bringt',
             metric: this.formatCurrency(breakEvenPoint.gross),
             text: `${detail} Entscheidend ist der Vergleich mit dem frei verfügbaren Einkommen bei 0 € Brutto.`
         };
@@ -122,7 +122,7 @@ const RecommendationsManager = {
             type: 'danger',
             icon: '−',
             tag: 'Armutsfalle',
-            title: 'Ihre aktuelle Zone frisst Einkommen',
+            title: 'Diese Zone frisst Einkommen',
             metric: `−${this.formatCurrency(trap.difference)}`,
             text: `Zwischen ${this.formatCurrency(trap.fromGross)} und ${this.formatCurrency(trap.toGross)} brutto fällt das frei verfügbare Einkommen statt zu steigen.`
         };

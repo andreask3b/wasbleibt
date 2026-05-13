@@ -19,14 +19,13 @@ const UIState = {
 
     handleStatusToggle(status, options = {}) {
         const { skipCalculation = false } = options;
-        document.getElementById('familyStatus').value = status;
+        const statusInput = document.getElementById('familyStatus');
+        if (statusInput) statusInput.value = status;
 
         document.querySelectorAll('.household-option').forEach(button => {
-            button.classList.toggle('active', button.dataset.status === status);
-        });
-
-        document.querySelectorAll('.status-card').forEach(card => {
-            card.classList.toggle('active', card.dataset.status === status);
+            const active = button.dataset.status === status;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
         });
 
         const income2Group = document.getElementById('income2Group');
@@ -134,8 +133,14 @@ const UIState = {
 
     handlePeriodToggle(period) {
         const isYearly = period === 'yearly';
-        const periodText = isYearly ? 'jährlich' : 'monatlich';
+        const periodText = isYearly ? 'jährlich gesamt' : 'monatlich';
         const suffix = isYearly ? '€/Jahr' : '€/Monat';
+        const hintText = isYearly
+            ? 'Gesamtbrutto pro Jahr inklusive 13. und 14. Gehalt.'
+            : 'Monatsbrutto je Zahlung bei 14 Gehältern/Jahr.';
+        const sliderConfig = isYearly
+            ? { max: 120000, step: 1000 }
+            : { max: 10000, step: 100 };
 
         document.querySelectorAll('[name="incomePeriod"]').forEach(radio => {
             radio.checked = radio.value === period;
@@ -143,12 +148,20 @@ const UIState = {
 
         const income1 = document.getElementById('grossIncome');
         const income2 = document.getElementById('partnerIncome');
+        const incomeSlider1 = document.getElementById('grossIncomeSlider');
+        const incomeSlider2 = document.getElementById('partnerIncomeSlider');
         const wasYearly = income1?.dataset.period === 'yearly';
 
         document.getElementById('periodLabel1').textContent = periodText;
         document.getElementById('periodLabel2').textContent = periodText;
         document.getElementById('incomeSuffix1').textContent = suffix;
         document.getElementById('incomeSuffix2').textContent = suffix;
+        const periodHint = document.getElementById('incomePeriodHint');
+        if (periodHint) periodHint.textContent = hintText;
+        [incomeSlider1, incomeSlider2].filter(Boolean).forEach(slider => {
+            slider.max = sliderConfig.max;
+            slider.step = sliderConfig.step;
+        });
 
         if (income1 && income2 && wasYearly !== isYearly) {
             if (isYearly) {
@@ -162,6 +175,8 @@ const UIState = {
 
         if (income1) income1.dataset.period = period;
         if (income2) income2.dataset.period = period;
+        if (incomeSlider1 && income1) incomeSlider1.value = income1.value;
+        if (incomeSlider2 && income2) incomeSlider2.value = income2.value;
 
         this.syncIncomeModeUI();
 

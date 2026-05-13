@@ -21,69 +21,6 @@ const ChartManager = {
     _injectStyles() {
         if (this._stylesInjected) return;
         this._stylesInjected = true;
-
-        const style = document.createElement('style');
-        style.textContent = `
-.chart-custom-legend {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 6px 16px;
-    padding: 10px 4px 16px;
-    font-size: 0.78rem;
-    color: #718096;
-}
-.ccl-gross {
-    width: 100%;
-    text-align: center;
-    font-size: 0.72rem;
-    font-weight: 600;
-    color: #94a3b8;
-    letter-spacing: 0.02em;
-    margin-bottom: 2px;
-    display: none;
-}
-.ccl-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    cursor: pointer;
-    padding: 3px 6px;
-    border-radius: 4px;
-    transition: background 0.15s;
-    user-select: none;
-}
-.ccl-item:hover { background: rgba(0,0,0,0.05); }
-.ccl-item.ccl-hidden { opacity: 0.35; }
-.ccl-swatch {
-    display: inline-block;
-    width: 22px;
-    height: 3px;
-    border-radius: 2px;
-    flex-shrink: 0;
-}
-.ccl-dash {
-    background: transparent !important;
-    border-top: 2px dashed;
-    height: 0;
-}
-.ccl-label {
-    color: #718096;
-    white-space: nowrap;
-    font-size: 0.78rem;
-}
-.ccl-value {
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-    color: #94a3b8;
-    font-size: 0.78rem;
-    white-space: nowrap;
-    transition: color 0.15s;
-}
-.ccl-value--active { color: #1b1b1b; }
-`;
-        document.head.appendChild(style);
     },
 
     buildScenarioSeries(situation, options = {}) {
@@ -133,8 +70,22 @@ const ChartManager = {
         };
     },
 
+    calculateAnnualNet(taxResult) {
+        if (!taxResult) return 0;
+
+        const annualGross = taxResult.annualGross || ((taxResult.gross || 0) * 14);
+        const annualSocialSecurity = (taxResult.socialSecurity?.total || 0) * 14;
+        return Math.max(0, annualGross - annualSocialSecurity - (taxResult.annualTax || 0));
+    },
+
     generateChartData(situation, currentGross) {
-        const series = this.buildScenarioSeries(situation);
+        const isYearly = situation.incomePeriod === 'yearly';
+        const annualCurrentGross = (currentGross || 0) * 14;
+        const annualMaxGross = Math.max(120000, Math.ceil((annualCurrentGross + 20000) / 10000) * 10000);
+        const series = this.buildScenarioSeries(situation, isYearly
+            ? { step: 1000 / 14, maxGross: annualMaxGross / 14 }
+            : {}
+        );
         const labels = [];
         const raw = {
             netto: [],
@@ -148,18 +99,50 @@ const ChartManager = {
         const wasBleibt = [];
 
         for (const point of series.points) {
-            labels.push(point.gross);
-            raw.netto.push(Math.round(point.combinedMonthlyNet));
-            raw.steuerentlastung.push(Math.round(point.benefits.totalTaxCredits / 12));
-            raw.familienbeihilfe.push(Math.round(point.benefits.familienbeihilfe.total + (point.benefits.familienbonus.monthlyKindermehrbetrag || 0)));
-            raw.sozialhilfe.push(Math.round(point.benefits.sozialhilfe.amount));
-            raw.wohnbeihilfe.push(Math.round(point.benefits.wohnbeihilfe.amount));
-            raw.kinderbetreuung.push(Math.round(point.benefits.childcareCosts?.total || 0));
-            raw.wohnkosten.push(Math.round(situation.monthlyRent || 0));
-            wasBleibt.push(Math.round(point.disposableIncome));
+            labels.push(Math.round(isYearly ? point.gross * 14 : point.gross));
+
+            if (isYearly) {
+                const annualNetIncome = this.calculateAnnualNet(point.taxResult)
+                    + this.calculateAnnualNet(point.partnerTaxResult);
+                const annualTaxCredits = point.benefits.totalTaxCredits || 0;
+                const annualFamilyBenefits = (point.benefits.familienbeihilfe.total + (point.benefits.familienbonus.monthlyKindermehrbetrag || 0)) * 12;
+                const annualSocialBenefits = (point.benefits.sozialhilfe.amount || 0) * 12;
+                const annualHousingBenefits = (point.benefits.wohnbeihilfe.amount || 0) * 12;
+                const annualChildcareCosts = (point.benefits.childcareCosts?.total || 0) * 12;
+                const annualHousingCosts = (situation.monthlyRent || 0) * 12;
+                const annualDisposable = Math.max(
+                    0,
+                    annualNetIncome
+                    + annualTaxCredits
+                    + annualFamilyBenefits
+                    + annualSocialBenefits
+                    + annualHousingBenefits
+                    - annualChildcareCosts
+                    - annualHousingCosts
+                );
+
+                raw.netto.push(Math.round(annualNetIncome));
+                raw.steuerentlastung.push(Math.round(annualTaxCredits));
+                raw.familienbeihilfe.push(Math.round(annualFamilyBenefits));
+                raw.sozialhilfe.push(Math.round(annualSocialBenefits));
+                raw.wohnbeihilfe.push(Math.round(annualHousingBenefits));
+                raw.kinderbetreuung.push(Math.round(annualChildcareCosts));
+                raw.wohnkosten.push(Math.round(annualHousingCosts));
+                wasBleibt.push(Math.round(annualDisposable));
+            } else {
+                raw.netto.push(Math.round(point.combinedMonthlyNet));
+                raw.steuerentlastung.push(Math.round(point.benefits.totalTaxCredits / 12));
+                raw.familienbeihilfe.push(Math.round(point.benefits.familienbeihilfe.total + (point.benefits.familienbonus.monthlyKindermehrbetrag || 0)));
+                raw.sozialhilfe.push(Math.round(point.benefits.sozialhilfe.amount));
+                raw.wohnbeihilfe.push(Math.round(point.benefits.wohnbeihilfe.amount));
+                raw.kinderbetreuung.push(Math.round(point.benefits.childcareCosts?.total || 0));
+                raw.wohnkosten.push(Math.round(situation.monthlyRent || 0));
+                wasBleibt.push(Math.round(point.disposableIncome));
+            }
         }
 
         return {
+            period: isYearly ? 'yearly' : 'monthly',
             labels,
             raw,
             wasBleibt,
@@ -178,7 +161,13 @@ const ChartManager = {
     _renderCustomLegend(chartContainer, datasets, legendMeta) {
         this._injectStyles();
         const section = chartContainer.closest('section') || chartContainer.parentElement;
-        section.querySelectorAll('.chart-custom-legend').forEach(el => el.remove());
+        section.querySelectorAll('.chart-legend-panel').forEach(el => el.remove());
+
+        const panel = document.createElement('details');
+        panel.className = 'chart-legend-panel';
+
+        const summary = document.createElement('summary');
+        summary.textContent = 'Weitere Linien';
 
         const legend = document.createElement('div');
         legend.className = 'chart-custom-legend';
@@ -188,6 +177,9 @@ const ChartManager = {
             const item = document.createElement('div');
             item.className = 'ccl-item';
             item.dataset.dsIdx = datasetIndex;
+            item.setAttribute('role', 'button');
+            item.setAttribute('tabindex', '0');
+            item.setAttribute('aria-pressed', dataset.hidden ? 'false' : 'true');
             if (dataset.hidden) item.classList.add('ccl-hidden');
 
             const isDashed = dataset.borderDash?.length > 0;
@@ -199,19 +191,33 @@ const ChartManager = {
                 <span class="ccl-value" data-label="${dataset.label}"></span>
             `;
 
-            item.addEventListener('click', () => {
+            const toggleDataset = () => {
                 if (!this.chart) return;
                 const meta = this.chart.getDatasetMeta(datasetIndex);
-                meta.hidden = !meta.hidden;
-                item.classList.toggle('ccl-hidden', !!meta.hidden);
-                item.querySelector('.ccl-swatch').style.background = meta.hidden ? 'transparent' : dataset.borderColor;
+                const isHidden = meta.hidden === null ? !!dataset.hidden : !!meta.hidden;
+                const nextHidden = !isHidden;
+                meta.hidden = nextHidden;
+                item.classList.toggle('ccl-hidden', nextHidden);
+                item.setAttribute('aria-pressed', nextHidden ? 'false' : 'true');
+                item.querySelector('.ccl-swatch').style.background = nextHidden ? 'transparent' : dataset.borderColor;
+                this.syncYAxisBounds();
                 this.chart.update();
+            };
+
+            item.addEventListener('click', toggleDataset);
+            item.addEventListener('keydown', event => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    toggleDataset();
+                }
             });
 
             legend.appendChild(item);
         });
 
-        chartContainer.insertAdjacentElement('afterend', legend);
+        panel.appendChild(summary);
+        panel.appendChild(legend);
+        chartContainer.insertAdjacentElement('afterend', panel);
         this._legendEl = legend;
         this._legendMeta = legendMeta;
     },
@@ -227,7 +233,8 @@ const ChartManager = {
             this._legendEl.prepend(header);
         }
 
-        header.textContent = `Brutto ${format(chartData.labels[index])}/Monat`;
+        const periodSuffix = chartData.period === 'yearly' ? '/Jahr' : '/Monat';
+        header.textContent = `Brutto ${format(chartData.labels[index])}${periodSuffix}`;
         header.style.display = '';
 
         this._legendEl.querySelectorAll('.ccl-value').forEach(cell => {
@@ -246,11 +253,52 @@ const ChartManager = {
         });
     },
 
+    syncYAxisBounds() {
+        if (!this.chart?.options?.scales?.y) return;
+
+        const visibleValues = [];
+        this.chart.data.datasets.forEach((dataset, datasetIndex) => {
+            const meta = this.chart.getDatasetMeta(datasetIndex);
+            const isHidden = meta.hidden === null ? !!dataset.hidden : !!meta.hidden;
+            if (isHidden) return;
+
+            dataset.data.forEach(value => {
+                const numericValue = Number(value);
+                if (Number.isFinite(numericValue)) {
+                    visibleValues.push(numericValue);
+                }
+            });
+        });
+
+        const minValue = Math.min(0, ...visibleValues);
+        const maxValue = Math.max(0, ...visibleValues);
+
+        this.chart.options.scales.y.min = minValue;
+        if (maxValue <= 0) {
+            this.chart.options.scales.y.max = 0;
+        } else {
+            delete this.chart.options.scales.y.max;
+        }
+    },
+
     createChart(canvasId, situation, currentGross) {
         const canvas = document.getElementById(canvasId);
         if (!canvas) return;
 
         const chartData = this.generateChartData(situation, currentGross);
+        const isYearlyChart = chartData.period === 'yearly';
+        canvas.setAttribute(
+            'aria-label',
+            isYearlyChart
+                ? 'Diagramm: Jahreswerte nach Gesamtbrutto pro Jahr inklusive 13. und 14. Gehalt'
+                : 'Diagramm: frei verfügbares Einkommen nach Bruttoeinkommen pro Monat'
+        );
+        const chartDescription = document.getElementById('chartDescriptionText');
+        if (chartDescription) {
+            chartDescription.textContent = isYearlyChart
+                ? 'Die grüne Linie zeigt Jahreswerte: was nach Netto, Transfers, Wohnen und Kinderbetreuung pro Jahr bleibt. Das Brutto ist Gesamtbrutto inklusive 13. und 14. Gehalt.'
+                : 'Die grüne Linie zeigt, was nach Wohnen und Kinderbetreuung frei verfügbar bleibt. Zusätzliche Linien können Sie bei Bedarf einblenden.';
+        }
         if (this.chart) {
             this.chart.destroy();
             this.chart = null;
@@ -300,6 +348,32 @@ const ChartManager = {
             }
         };
 
+        const zeroBaselinePlugin = {
+            id: 'zeroBaseline',
+            afterDataLimits: (chart, { scale }) => {
+                if (scale.id !== 'y') return;
+                if (scale.min > 0) scale.min = 0;
+                if (scale.max < 0) scale.max = 0;
+            },
+            beforeDatasetsDraw: chart => {
+                const yScale = chart.scales.y;
+                if (!yScale || yScale.min > 0 || yScale.max < 0) return;
+
+                const { ctx, chartArea } = chart;
+                const y = yScale.getPixelForValue(0);
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(chartArea.left, y);
+                ctx.lineTo(chartArea.right, y);
+                ctx.lineWidth = 1.25;
+                ctx.strokeStyle = 'rgba(26, 68, 128, 0.32)';
+                ctx.setLineDash([5, 4]);
+                ctx.stroke();
+                ctx.restore();
+            }
+        };
+
         const bandDataset = (label, data, color, options = {}) => ({
             label,
             data,
@@ -313,7 +387,7 @@ const ChartManager = {
             pointHoverRadius: 3,
             fill: true,
             tension: options.tension ?? 0.35,
-            hidden: !!options.hidden,
+            hidden: options.hidden ?? true,
             order: options.order ?? 5
         });
 
@@ -391,7 +465,9 @@ const ChartManager = {
                     x: {
                         title: {
                             display: true,
-                            text: 'Bruttolohn (€/Monat)',
+                            text: chartData.period === 'yearly'
+                                ? 'Gesamtbrutto (€/Jahr, inkl. 13./14.)'
+                                : 'Bruttolohn (€/Monat)',
                             color: '#94a3b8',
                             font: { size: 11 }
                         },
@@ -406,6 +482,7 @@ const ChartManager = {
                     y: {
                         stacked: true,
                         position: 'left',
+                        min: 0,
                         ticks: {
                             color: '#94a3b8',
                             font: { size: 10 },
@@ -416,7 +493,7 @@ const ChartManager = {
                 },
                 interaction: { mode: 'index', intersect: false }
             },
-            plugins: [markerPlugin]
+            plugins: [zeroBaselinePlugin, markerPlugin]
         });
     },
 

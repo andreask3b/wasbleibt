@@ -3,9 +3,9 @@
    Imports all partials
    =========================== */
 
-@import 'variables.css';
-@import 'base.css';
-@import 'layout.css';
-@import 'results.css';
-@import 'components.css';
-@import 'subpages.css';
+@import 'variables.css?v=20260507-ui10';
+@import 'base.css?v=20260507-ui10';
+@import 'layout.css?v=20260507-ui10';
+@import 'results.css?v=20260507-ui10';
+@import 'components.css?v=20260507-ui10';
+@import 'subpages.css?v=20260507-ui10';

@@ -1,44 +1,46 @@
 const FormManager = {
-    HOURS_PER_YEAR_FACTOR: 52 / 14,
+    MONTHS_PER_YEAR: 12,
+    WEEKS_PER_YEAR: 52,
+    PAYMENTS_PER_YEAR: 14,
 
     init() {
         document.querySelectorAll('.household-option').forEach(button => {
             button.addEventListener('click', () => {
+                this.clearActivePreset();
                 UIState.handleStatusToggle(button.dataset.status);
-            });
-        });
-
-        document.querySelectorAll('.status-card').forEach(card => {
-            card.addEventListener('click', () => {
-                UIState.handleStatusToggle(card.dataset.status);
             });
         });
 
         document.querySelectorAll('[name="incomeMode"]').forEach(radio => {
             radio.addEventListener('change', event => {
+                this.clearActivePreset();
                 UIState.handleIncomeModeToggle(event.target.value);
             });
         });
 
         document.querySelectorAll('[name="incomePeriod"]').forEach(radio => {
             radio.addEventListener('change', event => {
+                this.clearActivePreset();
                 UIState.handlePeriodToggle(event.target.value);
             });
         });
 
         document.getElementById('addChildBtnTop')?.addEventListener('click', () => {
+            this.clearActivePreset();
             ChildrenManager.addChild();
             ChildrenManager.updateChildCount();
             this.calculate();
         });
 
         document.getElementById('removeChildBtn')?.addEventListener('click', () => {
+            this.clearActivePreset();
             ChildrenManager.removeLastChild();
             ChildrenManager.updateChildCount();
             this.calculate();
         });
 
         document.querySelectorAll('.preset-btn').forEach(button => {
+            button.setAttribute('aria-pressed', button.classList.contains('active') ? 'true' : 'false');
             button.addEventListener('click', () => {
                 this.applyPreset(button.dataset.preset);
             });
@@ -49,20 +51,31 @@ const FormManager = {
         this.bindSlider('housingCostSlider', 'housingCost');
         this.bindSlider('apartmentSizeSlider', 'apartmentSize');
         this.bindSlider('hourlyWageSlider', 'hourlyWage');
-        this.bindSlider('weeklyHoursSlider', 'weeklyHours');
+        this.bindSlider('monthlyHoursSlider', 'monthlyHours');
 
-        document.querySelectorAll('input[type="number"], select, input[type="checkbox"]').forEach(input => {
-            input.addEventListener('change', () => this.calculate());
-            input.addEventListener('input', () => this.calculate());
+        document.querySelectorAll('select:not(#housingType), input[type="checkbox"]').forEach(input => {
+            input.addEventListener('change', () => {
+                this.clearActivePreset();
+                this.calculate();
+            });
+            input.addEventListener('input', () => {
+                this.clearActivePreset();
+                this.calculate();
+            });
         });
 
         document.getElementById('housingType')?.addEventListener('change', event => {
+            this.clearActivePreset();
             UIState.updateHousingLabel(event.target.value);
             this.calculate();
         });
 
-        document.getElementById('shareBtn')?.addEventListener('click', () => {
-            URLHandler.shareResults();
+        document.getElementById('shareBtn')?.addEventListener('click', event => {
+            URLHandler.shareResults(event.currentTarget);
+        });
+
+        document.getElementById('heroShareBtn')?.addEventListener('click', event => {
+            URLHandler.shareResults(event.currentTarget);
         });
 
         UIState.initStickyBar();
@@ -80,11 +93,13 @@ const FormManager = {
         if (!slider || !input) return;
 
         slider.addEventListener('input', event => {
+            this.clearActivePreset();
             input.value = event.target.value;
             this.calculate();
         });
 
         input.addEventListener('input', event => {
+            this.clearActivePreset();
             slider.value = event.target.value;
             this.calculate();
         });
@@ -94,10 +109,14 @@ const FormManager = {
         return document.querySelector(`[name="${name}"]:checked`)?.value || fallback;
     },
 
-    calculateHourlyIncome(hourlyWage, weeklyHours) {
-        const annualGross = (hourlyWage || 0) * (weeklyHours || 0) * 52;
-        const monthlyGross14 = annualGross / 14;
-        const monthlyAverage12 = annualGross / 12;
+    weeklyHoursToMonthlyHours(weeklyHours) {
+        return Math.round((weeklyHours || 0) * this.WEEKS_PER_YEAR / this.MONTHS_PER_YEAR);
+    },
+
+    calculateHourlyIncome(hourlyWage, monthlyHours) {
+        const monthlyAverage12 = (hourlyWage || 0) * (monthlyHours || 0);
+        const annualGross = monthlyAverage12 * this.MONTHS_PER_YEAR;
+        const monthlyGross14 = annualGross / this.PAYMENTS_PER_YEAR;
 
         return {
             annualGross,
@@ -108,15 +127,15 @@ const FormManager = {
 
     syncDerivedIncomeHint() {
         const hourlyWage = parseFloat(document.getElementById('hourlyWage')?.value) || 0;
-        const weeklyHours = parseFloat(document.getElementById('weeklyHours')?.value) || 0;
+        const monthlyHours = parseFloat(document.getElementById('monthlyHours')?.value) || 0;
         const hint = document.getElementById('derivedIncomeHint');
         if (!hint) return;
 
-        const derived = this.calculateHourlyIncome(hourlyWage, weeklyHours);
+        const derived = this.calculateHourlyIncome(hourlyWage, monthlyHours);
         const gross14 = this.formatCurrency(derived.monthlyGross14);
         const gross12 = this.formatCurrency(derived.monthlyAverage12);
 
-        hint.textContent = `Entspricht rund ${gross14} brutto je Zahlung bei 14 Gehältern/Jahr (${gross12} Monatsdurchschnitt auf 12 Monate).`;
+        hint.textContent = `Monatsdurchschnitt: ${gross12} brutto. Bei 14 Gehältern entspricht das rund ${gross14} je Zahlung.`;
     },
 
     getFormData() {
@@ -129,8 +148,8 @@ const FormManager = {
         let partnerIncome = isYearly ? partnerInputValue / 14 : partnerInputValue;
 
         const hourlyWage = parseFloat(document.getElementById('hourlyWage')?.value) || 0;
-        const weeklyHours = parseFloat(document.getElementById('weeklyHours')?.value) || 0;
-        const derivedIncome = this.calculateHourlyIncome(hourlyWage, weeklyHours);
+        const monthlyHours = parseFloat(document.getElementById('monthlyHours')?.value) || 0;
+        const derivedIncome = this.calculateHourlyIncome(hourlyWage, monthlyHours);
 
         if (incomeMode === 'salary' && isYearly) {
             monthlyGross = monthlyGross / 14;
@@ -145,7 +164,8 @@ const FormManager = {
             incomePeriod,
             monthlyGross,
             hourlyWage,
-            weeklyHours,
+            monthlyHours,
+            weeklyHours: monthlyHours * this.MONTHS_PER_YEAR / this.WEEKS_PER_YEAR,
             derivedMonthlyGross: derivedIncome.monthlyGross14,
             derivedMonthlyAverage: derivedIncome.monthlyAverage12,
             familyStatus: document.getElementById('familyStatus')?.value || 'single',
@@ -162,6 +182,9 @@ const FormManager = {
 
     calculate() {
         this.syncDerivedIncomeHint();
+        if (typeof URLHandler !== 'undefined') {
+            URLHandler.setShareStatus('');
+        }
 
         const formData = this.getFormData();
         if (formData.incomeMode === 'hours') {
@@ -219,10 +242,10 @@ const FormManager = {
 
         if (formData.incomeMode === 'hours') {
             rows.push({
-                label: `Arbeitszeit (${formData.hourlyWage.toFixed(1)} €/Stunde, ${Math.round(formData.weeklyHours)} Std./Woche)`,
+                label: `Arbeitszeit (${formData.hourlyWage.toFixed(1)} €/Stunde, ${Math.round(formData.monthlyHours)} Std./Monat)`,
                 value: formData.monthlyGross,
                 color: CLR.brutto,
-                info: 'umgerechnet auf 14 Gehälter'
+                info: 'auf 14 Gehälter umgerechnet'
             });
         }
 
@@ -364,16 +387,49 @@ const FormManager = {
             highlight: true
         });
 
-        container.innerHTML = rows.map(row => `
-            <div class="breakdown-row ${row.negative ? 'negative' : ''} ${row.isTotal ? 'total' : ''}"
-                 style="--row-color: ${row.color}">
-                <span class="row-label">
-                    <span class="row-icon" style="background: ${row.color}"></span>
-                    ${row.label}${row.info ? ` <small>${row.info}</small>` : ''}
-                </span>
-                <span class="row-value">${this.formatCurrency(row.value)}</span>
-            </div>
-        `).join('');
+        const groupLabels = {
+            income: 'Einkommen',
+            transfers: 'Transfers',
+            costs: 'Fixkosten',
+            result: 'Endbetrag'
+        };
+        const groupOrder = ['income', 'transfers', 'costs', 'result'];
+        const inferGroup = row => {
+            if (row.highlight || row.label.includes('Haushaltskasse')) return 'result';
+            if (
+                row.label.includes('Familienbeihilfe') ||
+                row.label.includes('Familienbonus') ||
+                row.label.includes('Kindermehrbetrag') ||
+                row.label.includes('Sozialhilfe') ||
+                row.label.includes('Wohnbeihilfe') ||
+                row.label.includes('Wohnunterstützung')
+            ) {
+                return 'transfers';
+            }
+            if (row.label.includes('Wohnkosten') || row.label.includes('Kinderbetreuung')) return 'costs';
+            return 'income';
+        };
+
+        container.innerHTML = groupOrder.map(group => {
+            const groupRows = rows.filter(row => inferGroup(row) === group);
+            if (!groupRows.length) return '';
+
+            return `
+                <div class="breakdown-group">
+                    <div class="breakdown-group-title">${groupLabels[group]}</div>
+                    ${groupRows.map(row => `
+                        <div class="breakdown-row ${row.negative ? 'negative' : ''} ${row.isTotal ? 'total' : ''} ${row.highlight ? 'highlight' : ''}"
+                             style="--row-color: ${row.color}">
+                            <span class="row-label">
+                                <span class="row-icon" style="background: ${row.color}"></span>
+                                ${row.label}${row.info ? ` <small>${row.info}</small>` : ''}
+                            </span>
+                            <span class="row-value">${this.formatCurrency(row.value)}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }).join('');
     },
 
     applyPreset(presetId) {
@@ -381,13 +437,17 @@ const FormManager = {
         if (!preset) return;
 
         document.querySelectorAll('.preset-btn').forEach(button => {
-            button.classList.toggle('active', button.dataset.preset === presetId);
+            const active = button.dataset.preset === presetId;
+            button.classList.toggle('active', active);
+            button.setAttribute('aria-pressed', active ? 'true' : 'false');
         });
+        this.setShareButtonMode('preset');
 
         const values = preset.values;
         const derivedPresetGross = values.incomeMode === 'hours'
-            ? this.calculateHourlyIncome(values.hourlyWage || 0, values.weeklyHours || 0).monthlyGross14
+            ? this.calculateHourlyIncome(values.hourlyWage || 0, values.monthlyHours || this.weeklyHoursToMonthlyHours(values.weeklyHours || 0)).monthlyGross14
             : (values.monthlyGross || 0);
+        const presetMonthlyHours = values.monthlyHours || this.weeklyHoursToMonthlyHours(values.weeklyHours || 0);
 
         UIState.handleStatusToggle(values.familyStatus, { skipCalculation: true });
         this.setRadioValue('incomeMode', values.incomeMode || 'salary');
@@ -399,13 +459,21 @@ const FormManager = {
         document.getElementById('periodLabel2').textContent = 'monatlich';
         document.getElementById('incomeSuffix1').textContent = '€/Monat';
         document.getElementById('incomeSuffix2').textContent = '€/Monat';
+        const periodHint = document.getElementById('incomePeriodHint');
+        if (periodHint) periodHint.textContent = 'Monatsbrutto je Zahlung bei 14 Gehältern/Jahr.';
+        ['grossIncomeSlider', 'partnerIncomeSlider'].forEach(id => {
+            const slider = document.getElementById(id);
+            if (!slider) return;
+            slider.max = 10000;
+            slider.step = 100;
+        });
 
         this.setInputValue('grossIncome', Math.round(derivedPresetGross));
         this.setInputValue('grossIncomeSlider', Math.round(derivedPresetGross));
         this.setInputValue('hourlyWage', values.hourlyWage || 0);
         this.setInputValue('hourlyWageSlider', values.hourlyWage || 0);
-        this.setInputValue('weeklyHours', values.weeklyHours || 0);
-        this.setInputValue('weeklyHoursSlider', values.weeklyHours || 0);
+        this.setInputValue('monthlyHours', presetMonthlyHours);
+        this.setInputValue('monthlyHoursSlider', presetMonthlyHours);
         this.setInputValue('partnerIncome', values.partnerIncome || 0);
         this.setInputValue('partnerIncomeSlider', values.partnerIncome || 0);
         this.setInputValue('housingCost', values.monthlyRent || 0);
@@ -426,6 +494,27 @@ const FormManager = {
         ChildrenManager.setChildren(values.children || []);
         this.syncDerivedIncomeHint();
         this.calculate();
+    },
+
+    clearActivePreset() {
+        const activePreset = document.querySelector('.preset-btn.active');
+        if (!activePreset) return;
+
+        document.querySelectorAll('.preset-btn').forEach(button => {
+            button.classList.remove('active');
+            button.setAttribute('aria-pressed', 'false');
+        });
+        this.setShareButtonMode('scenario');
+    },
+
+    setShareButtonMode(mode) {
+        const button = document.getElementById('heroShareBtn');
+        const label = button?.querySelector('span');
+        if (!button || !label) return;
+
+        const text = mode === 'preset' ? 'Preset teilen' : 'Szenario teilen';
+        label.textContent = text;
+        button.setAttribute('aria-label', `Aktuelles ${mode === 'preset' ? 'Preset' : 'Szenario'} als Link teilen`);
     },
 
     setRadioValue(name, value) {

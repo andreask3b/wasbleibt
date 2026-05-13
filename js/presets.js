@@ -3,12 +3,13 @@ const ScenarioPresets = {
         {
             id: 'single-parent-trap',
             label: 'Alleinerziehend, 2 Kinder',
-            description: 'Teilzeit, Betreuung, Wien',
+            description: '20h/Woche, Betreuung, Wien',
             values: {
                 familyStatus: 'singleParent',
                 incomeMode: 'hours',
                 hourlyWage: 14,
                 weeklyHours: 20,
+                monthlyHours: 87,
                 partnerIncome: 0,
                 housingType: 'rent',
                 monthlyRent: 850,
@@ -28,13 +29,14 @@ const ScenarioPresets = {
         },
         {
             id: 'reentry-parent',
-            label: 'Wiedereinstieg 20h',
+            label: 'Wiedereinstieg 20h/Woche',
             description: '1 Kind, Miete, Freibetrag',
             values: {
                 familyStatus: 'singleParent',
                 incomeMode: 'hours',
                 hourlyWage: 15,
                 weeklyHours: 20,
+                monthlyHours: 87,
                 partnerIncome: 0,
                 housingType: 'rent',
                 monthlyRent: 780,
@@ -54,12 +56,13 @@ const ScenarioPresets = {
         {
             id: 'low-earner-rent',
             label: 'Geringverdienst',
-            description: '25h, Miete, kaum Anreiz',
+            description: '25h/Woche, Miete, kaum Anreiz',
             values: {
                 familyStatus: 'single',
                 incomeMode: 'hours',
                 hourlyWage: 13,
                 weeklyHours: 25,
+                monthlyHours: 108,
                 partnerIncome: 0,
                 housingType: 'rent',
                 monthlyRent: 800,
@@ -89,7 +92,7 @@ const ScenarioPresets = {
         params.set('status', values.familyStatus);
         params.set('modus', values.incomeMode);
         params.set('stundenlohn', values.hourlyWage);
-        params.set('wochenstunden', values.weeklyHours);
+        params.set('monatsstunden', values.monthlyHours || Math.round((values.weeklyHours || 0) * 52 / 12));
         params.set('miete', values.monthlyRent);
         params.set('groesse', values.apartmentSize);
         params.set('bundesland', values.federalState);

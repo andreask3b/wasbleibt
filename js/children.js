@@ -48,6 +48,7 @@ const ChildrenManager = {
      * Remove a child by ID
      */
     removeChild(id) {
+        if (typeof FormManager !== 'undefined') FormManager.clearActivePreset();
         this.children = this.children.filter(c => c.id !== id);
         this.renderChildren();
         this.updateChildCount();
@@ -83,6 +84,7 @@ const ChildrenManager = {
         const child = this.children.find(c => c.id === id);
         if (child) {
             child.age = parseInt(age) || 0;
+            if (typeof FormManager !== 'undefined') FormManager.clearActivePreset();
         }
     },
 
@@ -93,6 +95,7 @@ const ChildrenManager = {
     setCareMode(id, mode) {
         const child = this.children.find(c => c.id === id);
         if (!child) return;
+        if (typeof FormManager !== 'undefined') FormManager.clearActivePreset();
         child.careMode = mode;
         child.inChildcare = mode !== 'none';
         child.fullDay = mode === 'full';
@@ -139,9 +142,9 @@ const ChildrenManager = {
         if (!container) return;
 
         const careModes = [
-            { value: 'none', label: 'Keine', emoji: '🏠' },
-            { value: 'half', label: 'Halbtags', emoji: '☀️' },
-            { value: 'full', label: 'Ganztags', emoji: '🌟' }
+            { value: 'none', label: 'Keine' },
+            { value: 'half', label: 'Halbtags' },
+            { value: 'full', label: 'Ganztags' }
         ];
 
         container.innerHTML = this.children.map((child, index) => `
@@ -166,8 +169,9 @@ const ChildrenManager = {
                             type="button"
                             class="care-btn${child.careMode === m.value ? ' active' : ''}"
                             onclick="ChildrenManager.setCareMode(${child.id}, '${m.value}')"
+                            aria-pressed="${child.careMode === m.value ? 'true' : 'false'}"
                             title="${m.label}"
-                        >${m.emoji} <span class="care-btn-text">${m.label}</span></button>
+                        ><span class="care-btn-text">${m.label}</span></button>
                     `).join('')}
                 </div>
                 <button type="button" class="child-remove-btn" onclick="ChildrenManager.removeChild(${child.id})" title="Entfernen">×</button>

@@ -36,11 +36,16 @@ const URLHandler = {
             if (hourlySlider) hourlySlider.value = params.get('stundenlohn');
         }
 
-        if (params.has('wochenstunden')) {
-            const hoursInput = document.getElementById('weeklyHours');
-            const hoursSlider = document.getElementById('weeklyHoursSlider');
-            if (hoursInput) hoursInput.value = params.get('wochenstunden');
-            if (hoursSlider) hoursSlider.value = params.get('wochenstunden');
+        if (params.has('monatsstunden') || params.has('wochenstunden')) {
+            const rawHours = params.has('monatsstunden')
+                ? parseFloat(params.get('monatsstunden'))
+                : (typeof FormManager !== 'undefined'
+                    ? FormManager.weeklyHoursToMonthlyHours(parseFloat(params.get('wochenstunden')) || 0)
+                    : Math.round((parseFloat(params.get('wochenstunden')) || 0) * 52 / 12));
+            const hoursInput = document.getElementById('monthlyHours');
+            const hoursSlider = document.getElementById('monthlyHoursSlider');
+            if (hoursInput) hoursInput.value = rawHours;
+            if (hoursSlider) hoursSlider.value = rawHours;
         }
 
         if (params.has('miete')) {
@@ -82,7 +87,7 @@ const URLHandler = {
         if (params.get('modus') === 'hours' && typeof FormManager !== 'undefined') {
             const derived = FormManager.calculateHourlyIncome(
                 parseFloat(document.getElementById('hourlyWage')?.value) || 0,
-                parseFloat(document.getElementById('weeklyHours')?.value) || 0
+                parseFloat(document.getElementById('monthlyHours')?.value) || 0
             );
             const grossInput = document.getElementById('grossIncome');
             const grossSlider = document.getElementById('grossIncomeSlider');
@@ -105,7 +110,7 @@ const URLHandler = {
         const grossIncome = document.getElementById('grossIncome')?.value || 0;
         const partnerIncome = document.getElementById('partnerIncome')?.value || 0;
         const hourlyWage = document.getElementById('hourlyWage')?.value || 0;
-        const weeklyHours = document.getElementById('weeklyHours')?.value || 0;
+        const monthlyHours = document.getElementById('monthlyHours')?.value || 0;
         const housingCost = document.getElementById('housingCost')?.value || 0;
         const apartmentSize = document.getElementById('apartmentSize')?.value || 0;
         const federalState = document.getElementById('federalState')?.value || 'vienna';
@@ -117,7 +122,7 @@ const URLHandler = {
         if (incomeMode === 'salary' && parseFloat(grossIncome) > 0) params.set('brutto', grossIncome);
         if (parseFloat(partnerIncome) > 0) params.set('partner', partnerIncome);
         if (incomeMode === 'hours' && parseFloat(hourlyWage) > 0) params.set('stundenlohn', hourlyWage);
-        if (incomeMode === 'hours' && parseFloat(weeklyHours) > 0) params.set('wochenstunden', weeklyHours);
+        if (incomeMode === 'hours' && parseFloat(monthlyHours) > 0) params.set('monatsstunden', monthlyHours);
         if (parseFloat(housingCost) > 0) params.set('miete', housingCost);
         if (parseFloat(apartmentSize) > 0) params.set('groesse', apartmentSize);
         if (federalState !== 'vienna') params.set('bundesland', federalState);
@@ -131,42 +136,124 @@ const URLHandler = {
             }
         }
 
-        return window.location.origin + window.location.pathname + '?' + params.toString();
+        const query = params.toString();
+        return window.location.origin + window.location.pathname + (query ? `?${query}` : '');
     },
 
-    async shareResults() {
+    async shareResults(triggerButton = null) {
         const url = this.generateShareURL();
         window.history.replaceState({}, '', url);
+        this.setShareStatus('');
 
         if (navigator.share) {
             try {
                 await navigator.share({
                     title: 'was-bleibt.at - Meine Berechnung',
-                    text: `Was bleibt: ${document.getElementById('stickyDisposable')?.textContent || ''}`,
+                    text: `Was bleibt: ${document.getElementById('disposableIncome')?.textContent || ''}`,
                     url
                 });
+                this.setShareStatus('Szenario geteilt');
+                this.setShareURLField('', true);
                 return;
             } catch (error) {
-                this.copyToClipboard(url);
-                return;
+                if (error?.name === 'AbortError') {
+                    return;
+                }
             }
         }
 
-        this.copyToClipboard(url);
+        await this.copyToClipboard(url, triggerButton);
     },
 
-    copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(() => {
-            const btn = document.getElementById('shareBtn');
-            if (!btn) return;
+    async copyToClipboard(text, triggerButton = null) {
+        let copied = false;
 
+        try {
+            if (navigator.clipboard && window.isSecureContext) {
+                await navigator.clipboard.writeText(text);
+                copied = true;
+            }
+        } catch (error) {
+            copied = false;
+        }
+
+        if (!copied) {
+            copied = this.fallbackCopyToClipboard(text);
+        }
+
+        if (copied) {
+            this.setShareStatus('Link kopiert');
+            this.setShareURLField('', true);
+            this.markShareButton(triggerButton || document.getElementById('heroShareBtn'));
+        } else {
+            this.setShareStatus('Link in der Adresszeile aktualisiert');
+            this.setShareURLField(text, false);
+        }
+    },
+
+    fallbackCopyToClipboard(text) {
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+
+        try {
+            return document.execCommand('copy');
+        } catch (error) {
+            return false;
+        } finally {
+            document.body.removeChild(textarea);
+        }
+    },
+
+    setShareStatus(message) {
+        const status = document.getElementById('shareStatus');
+        if (status) status.textContent = message;
+        if (!message) this.setShareURLField('', true);
+    },
+
+    setShareURLField(value, hidden) {
+        const field = document.getElementById('shareUrlField');
+        if (!field) return;
+
+        field.value = value;
+        field.hidden = hidden;
+        if (!hidden) {
+            field.focus();
+            field.select();
+        }
+    },
+
+    markShareButton(button) {
+        const buttons = [
+            button,
+            document.getElementById('heroShareBtn'),
+            document.getElementById('shareBtn')
+        ].filter(Boolean);
+
+        buttons.forEach(btn => {
             const originalTitle = btn.title;
+            const originalLabel = btn.querySelector('span')?.textContent;
+            btn.dataset.shareActive = 'true';
             btn.title = 'Link kopiert!';
-            btn.style.background = 'rgba(46, 125, 50, 0.8)';
+
+            const label = btn.querySelector('span');
+            if (label && btn.id === 'heroShareBtn') {
+                label.textContent = 'Link kopiert';
+            }
+
             setTimeout(() => {
                 btn.title = originalTitle;
-                btn.style.background = '';
-            }, 2000);
+                delete btn.dataset.shareActive;
+                if (label && originalLabel) {
+                    label.textContent = originalLabel;
+                }
+            }, 2200);
         });
     }
 };

@@ -24,7 +24,7 @@
         content="Berechnen Sie Ihr tatsächliches Haushaltseinkommen in Österreich inkl. aller Sozialleistungen.">
     <meta name="twitter:image" content="https://was-bleibt.at/og-image.png">
 
-    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/main.css?v=20260507-ui10">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -33,7 +33,6 @@
         <!-- Header -->
         <header class="header">
             <div class="logo">
-                <span class="logo-icon">💰</span>
                 <h1>was-bleibt.at</h1>
             </div>
             <p class="tagline">Ihr tatsächliches Haushaltseinkommen in Österreich</p>
@@ -55,7 +54,8 @@
                     <span class="sticky-label">Transfers</span>
                     <span class="sticky-value benefits" id="stickyBenefits">€ 0</span>
                 </div>
-                <button class="sticky-share-btn" id="shareBtn" title="Link teilen">
+                <button class="sticky-share-btn" id="shareBtn" title="Link teilen"
+                    aria-label="Aktuelles Szenario als Link teilen">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
                         <polyline points="16,6 12,2 8,6" />
@@ -65,80 +65,142 @@
             </div>
         </div>
 
-        <!-- Disclaimer Banner -->
-        <div class="disclaimer-banner">
-            <span class="disclaimer-icon">Hinweis</span>
-            <p>
-                <strong>Hinweis:</strong> Diese Berechnung dient nur zur Orientierung.
-                Die tatsächlichen Leistungen können abweichen und müssen offiziell beantragt werden.
-                <a href="berechnungen.html">Berechnungsmethoden</a> |
-                <a href="armutsfalle.html">Was ist die Armutsfalle?</a> |
-                <a href="#references">Quellen & Rechtsgrundlagen</a>
-            </p>
-        </div>
-
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Chart Section (Hero) -->
-            <section class="chart-hero-section glass-card">
-                <h2>Was bleibt bei mehr Arbeit?</h2>
-                <p class="chart-description">
-                    Die grüne Linie zeigt, was nach Wohnen und Kinderbetreuung wirklich frei verfügbar bleibt.
-                    Genau dort wird sichtbar, ob sich zusätzliche Arbeit auszahlt oder in der Armutsfalle verpufft.
-                </p>
-                <div class="chart-container" style="height: 420px;">
-                    <canvas id="incomeChart"></canvas>
+            <!-- Result Hero -->
+            <section class="result-hero glass-card" aria-labelledby="resultHeroTitle">
+                <div class="result-hero-main">
+                    <div class="result-hero-copy">
+                        <p class="eyebrow">Aktuelles Szenario</p>
+                        <h2 id="resultHeroTitle">Was bleibt wirklich?</h2>
+                        <p>Der Betrag, der nach Einkommen, Transfers, Wohnen und Betreuung wirklich frei verfügbar ist.</p>
+                    </div>
+                    <div class="result-hero-value" aria-live="polite" aria-atomic="true">
+                        <span class="hero-value-label">Was bleibt</span>
+                        <span class="hero-value-number" id="disposableIncome">€ 0</span>
+                        <span class="hero-value-detail">frei verfügbar pro Monat</span>
+                    </div>
                 </div>
-                <!-- Custom legend injected here by chart.js (between chart-container and summary-cards) -->
+
+                <div class="hero-formula" aria-label="Berechnungslogik">
+                    <span>Netto</span>
+                    <strong>+</strong>
+                    <span>Transfers</span>
+                    <strong>−</strong>
+                    <span>Wohnen</span>
+                    <strong>−</strong>
+                    <span>Betreuung</span>
+                    <strong>=</strong>
+                    <span>Was bleibt</span>
+                </div>
+
+                <div class="result-hero-actions">
+                    <button class="share-primary-btn" id="heroShareBtn" type="button"
+                        aria-label="Aktuelles Szenario als Link teilen">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" aria-hidden="true">
+                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                            <polyline points="16,6 12,2 8,6" />
+                            <line x1="12" y1="2" x2="12" y2="15" />
+                        </svg>
+                        <span>Szenario teilen</span>
+                    </button>
+                    <a class="btn-secondary hero-edit-link" href="#inputSection">Situation anpassen</a>
+                    <span class="share-status" id="shareStatus" role="status" aria-live="polite"></span>
+                    <input class="share-url-field" id="shareUrlField" type="text" readonly hidden
+                        aria-label="Teilbarer Szenario-Link">
+                </div>
+
+                <div class="result-metrics" aria-label="Zusammenfassung">
+                    <div class="result-metric">
+                        <span class="metric-label">Haushaltskasse</span>
+                        <span class="metric-value" id="totalHousehold">€ 0</span>
+                        <span class="metric-detail">Netto, Steuerentlastung und Transfers</span>
+                    </div>
+                    <div class="result-metric">
+                        <span class="metric-label">Netto &amp; Gutschriften</span>
+                        <span class="metric-value" id="netIncome">€ 0</span>
+                        <span class="metric-detail">Arbeitseinkommen nach Abgaben</span>
+                    </div>
+                    <div class="result-metric">
+                        <span class="metric-label">Transfers</span>
+                        <span class="metric-value benefits" id="totalBenefits">€ 0</span>
+                        <span class="metric-detail">Familie, Sozialhilfe, Wohnen</span>
+                    </div>
+                </div>
             </section>
 
+            <details class="trust-strip">
+                <summary>
+                    <span>Schätzung mit offiziellen 2025-Regeln</span>
+                    <span>Quellen & Details</span>
+                </summary>
+                <p>
+                    Diese Berechnung dient zur Orientierung. Tatsächliche Leistungen können abweichen und müssen
+                    offiziell beantragt werden.
+                    <a href="berechnungen.html">Berechnungsmethoden</a>
+                    <a href="armutsfalle.html">Armutsfalle</a>
+                    <a href="#references">Quellen</a>
+                </p>
+            </details>
+
+            <div class="home-workspace">
 
             <!-- Input Section -->
-            <section class="input-section glass-card">
-                <h2>Ihre Situation</h2>
+            <section class="input-section glass-card" id="inputSection">
+                <div class="section-heading">
+                    <p class="eyebrow">Eingaben</p>
+                    <h2>Ihre Situation</h2>
+                </div>
 
+                <div class="preset-header">
+                    <span>Beispiele</span>
+                    <p>Schnell starten und danach jeden Wert anpassen.</p>
+                </div>
                 <div class="preset-strip" id="presetStrip">
                     <button type="button" class="preset-btn" data-preset="single-parent-trap">
                         <span class="preset-title">Alleinerziehend, 2 Kinder</span>
-                        <span class="preset-desc">Teilzeit, Betreuung, Wien</span>
+                        <span class="preset-desc">20h/Woche, Betreuung, Wien</span>
                     </button>
                     <button type="button" class="preset-btn" data-preset="reentry-parent">
-                        <span class="preset-title">Wiedereinstieg 20h</span>
+                        <span class="preset-title">Wiedereinstieg 20h/Woche</span>
                         <span class="preset-desc">1 Kind, Miete, Freibetrag</span>
                     </button>
                     <button type="button" class="preset-btn" data-preset="low-earner-rent">
                         <span class="preset-title">Geringverdienst</span>
-                        <span class="preset-desc">25h, Miete, kaum Anreiz</span>
+                        <span class="preset-desc">25h/Woche, Miete, kaum Anreiz</span>
                     </button>
                 </div>
 
                 <!-- Block 1: Familienstand & Kinder -->
                 <div class="input-block">
-                    <div class="block-label">🧑 Familienstand & Kinder</div>
+                    <div class="block-label">Familienstand & Kinder</div>
 
                     <!-- Compact single row: toggle + children counter -->
                     <div class="status-children-row">
                         <div class="household-picker" id="householdPicker" role="group" aria-label="Haushaltstyp">
-                            <button type="button" class="household-option active" data-status="single">
-                                <span class="household-icon">🧍</span>
+                            <button type="button" class="household-option active" data-status="single"
+                                aria-pressed="true">
                                 <span class="household-label">Alleinstehend</span>
                             </button>
-                            <button type="button" class="household-option" data-status="singleParent">
-                                <span class="household-icon">🧒</span>
+                            <button type="button" class="household-option" data-status="singleParent"
+                                aria-pressed="false">
                                 <span class="household-label">Alleinerziehend</span>
                             </button>
-                            <button type="button" class="household-option" data-status="married">
-                                <span class="household-icon">👫</span>
+                            <button type="button" class="household-option" data-status="married"
+                                aria-pressed="false">
                                 <span class="household-label">Paar</span>
                             </button>
                         </div>
 
                         <!-- Children stepper -->
-                        <div class="children-stepper">
-                            <span class="children-stepper-label">👶</span>
-                            <button type="button" class="child-btn minus" id="removeChildBtn">−</button>
+                        <div class="children-stepper" aria-label="Kinderanzahl">
+                            <span class="children-stepper-label">Kinder</span>
+                            <button type="button" class="child-btn minus" id="removeChildBtn"
+                                aria-label="Ein Kind entfernen">−</button>
                             <span class="child-count" id="childCount">0</span>
-                            <button type="button" class="child-btn plus" id="addChildBtnTop">+</button>
+                            <button type="button" class="child-btn plus" id="addChildBtnTop"
+                                aria-label="Ein Kind hinzufügen">+</button>
                         </div>
                     </div>
 
@@ -161,7 +223,7 @@
 
                 <!-- Block 2: Einkommen -->
                 <div class="input-block">
-                    <div class="block-label">💶 Einkommen</div>
+                    <div class="block-label">Einkommen</div>
 
                     <div class="income-mode-toggle">
                         <label class="period-option">
@@ -170,7 +232,7 @@
                         </label>
                         <label class="period-option">
                             <input type="radio" name="incomeMode" value="hours">
-                            <span>Stundenlohn & Stunden</span>
+                            <span>Stundenlohn & Monatsstunden</span>
                         </label>
                     </div>
 
@@ -199,6 +261,7 @@
                                         placeholder="2.700">
                                     <span class="input-suffix" id="incomeSuffix1">€/Monat</span>
                                 </div>
+                                <small class="input-hint" id="incomePeriodHint">Monatsbrutto je Zahlung bei 14 Gehältern/Jahr.</small>
                             </div>
                         </div>
 
@@ -214,14 +277,14 @@
                                 </div>
                             </div>
 
-                            <label for="weeklyHours">Wochenstunden</label>
+                            <label for="monthlyHours">Monatsstunden</label>
                             <div class="slider-wrapper">
-                                <input type="range" id="weeklyHoursSlider" min="0" max="40" step="1" value="20"
+                                <input type="range" id="monthlyHoursSlider" min="0" max="220" step="1" value="87"
                                     class="range-slider">
                                 <div class="input-wrapper large slider-input">
-                                    <input type="number" id="weeklyHours" min="0" max="80" step="1" value="20"
-                                        placeholder="20">
-                                    <span class="input-suffix">Std./Woche</span>
+                                    <input type="number" id="monthlyHours" min="0" max="260" step="1" value="87"
+                                        placeholder="87">
+                                    <span class="input-suffix">Std./Monat</span>
                                 </div>
                             </div>
 
@@ -248,7 +311,7 @@
 
                 <!-- Block 3: Wohnen -->
                 <div class="input-block">
-                    <div class="block-label">🏠 Wohnen</div>
+                    <div class="block-label">Wohnen</div>
 
                     <div class="form-grid form-grid-2col">
                         <!-- Row 1: Dropdowns side by side -->
@@ -262,7 +325,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="federalState">📍 Bundesland</label>
+                            <label for="federalState">Bundesland</label>
                             <select id="federalState">
                                 <option value="vienna" selected>Wien</option>
                                 <option value="burgenland">Burgenland</option>
@@ -278,7 +341,7 @@
 
                         <!-- Row 2: Sliders side by side (half width each) -->
                         <div class="form-group" id="housingCostGroup">
-                            <label for="housingCost">💸 <span id="housingCostLabel">Miete</span></label>
+                            <label for="housingCost"><span id="housingCostLabel">Miete</span></label>
                             <div class="slider-wrapper">
                                 <input type="range" id="housingCostSlider" min="0" max="3000" step="50" value="700"
                                     class="range-slider">
@@ -292,7 +355,7 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="apartmentSize">📐 Wohnfläche <small
+                            <label for="apartmentSize">Wohnfläche <small
                                     style="font-weight:400; color:var(--text-muted)">(für Wohnbeihilfe)</small></label>
                             <div class="slider-wrapper">
                                 <input type="range" id="apartmentSizeSlider" min="20" max="300" step="5" value="60"
@@ -310,7 +373,7 @@
                             <label class="checkbox-label">
                                 <input type="checkbox" id="wiedereinsteiger">
                                 <span class="checkbox-text">
-                                    🔄 Wiedereinsteiger:in (gerade Arbeit aufgenommen)
+                                    Wiedereinsteiger:in (gerade Arbeit aufgenommen)
                                 </span>
                             </label>
                             <small class="input-hint">
@@ -322,49 +385,58 @@
                 </div>
             </section>
 
+            <div class="insight-stack">
+            <!-- Chart Section -->
+            <section class="chart-hero-section glass-card" id="chartSection">
+                <div class="section-heading">
+                    <p class="eyebrow">Verlauf</p>
+                    <h2>Was passiert bei mehr Brutto?</h2>
+                </div>
+                <p class="chart-description" id="chartDescriptionText">
+                    Die grüne Linie zeigt, was nach Wohnen und Kinderbetreuung frei verfügbar bleibt.
+                    Zusätzliche Linien können Sie bei Bedarf einblenden.
+                </p>
+                <p class="visually-hidden" id="chartDescription">
+                    Liniendiagramm des frei verfügbaren Einkommens bei steigendem Bruttoeinkommen.
+                </p>
+                <div class="chart-container">
+                    <canvas id="incomeChart"
+                        aria-label="Diagramm: frei verfügbares Einkommen nach Bruttoeinkommen"
+                        aria-describedby="chartDescription">
+                        Frei verfügbares Einkommen nach Bruttoeinkommen.
+                    </canvas>
+                </div>
+                <!-- Custom legend injected here by chart.js -->
+            </section>
+
             <!-- Results Section -->
             <section class="results-section glass-card" id="resultsSection">
-                <h2>Ihre Lage</h2>
-
-                <!-- Summary Cards -->
-                <div class="summary-cards">
-                    <div class="summary-card highlight disposable">
-                        <span class="card-label">Was bleibt</span>
-                        <span class="card-value" id="disposableIncome">€ 0</span>
-                        <span class="card-detail">Nach Wohnen und Kinderbetreuung frei verfügbar</span>
-                    </div>
-                    <div class="summary-card">
-                        <span class="card-label">Haushaltskasse gesamt</span>
-                        <span class="card-value" id="totalHousehold">€ 0</span>
-                        <span class="card-detail">Netto, Steuerentlastung und Transfers</span>
-                    </div>
-                    <div class="summary-card">
-                        <span class="card-label">Netto &amp; Steuergutschriften</span>
-                        <span class="card-value" id="netIncome">€ 0</span>
-                        <span class="card-detail">Arbeitseinkommen nach Steuer und SV</span>
-                    </div>
-                    <div class="summary-card benefits">
-                        <span class="card-label">Transfers</span>
-                        <span class="card-value" id="totalBenefits">€ 0</span>
-                        <span class="card-detail">Familienbeihilfe, Sozialhilfe, Wohnbeihilfe</span>
-                    </div>
+                <div class="section-heading">
+                    <p class="eyebrow">Rechnung</p>
+                    <h2>Warum kommt dieser Betrag heraus?</h2>
                 </div>
 
                 <!-- Detailed Breakdown -->
                 <div class="breakdown-section">
-                    <h3>Detaillierte Aufschlüsselung</h3>
+                    <h3>Monatliche Rechnung</h3>
                     <div class="breakdown-table" id="breakdownTable"></div>
                 </div>
 
-                <!-- Recommendations -->
-                <div class="recommendations-section" id="recommendationsSection">
-                    <h3>Anreizanalyse</h3>
-                    <div class="analysis-intro">
-                        Zusätzliche Arbeit zählt nur dann, wenn davon nach dem Verlust von Leistungen und Fixkosten
-                        tatsächlich mehr übrig bleibt.
-                    </div>
-                    <div class="recommendations-content" id="recommendationsContent"></div>
+            </section>
+            </div>
+            </div>
+
+            <!-- Recommendations -->
+            <section class="recommendations-section recommendations-section--wide glass-card" id="recommendationsSection">
+                <div class="section-heading">
+                    <p class="eyebrow">Mehrverdienst</p>
+                    <h2>Arbeit und Mehrverdienst</h2>
                 </div>
+                <div class="analysis-intro">
+                    Zusätzliche Arbeit zählt nur dann, wenn davon nach dem Verlust von Leistungen und Fixkosten
+                    tatsächlich mehr übrig bleibt.
+                </div>
+                <div class="recommendations-content" id="recommendationsContent"></div>
             </section>
 
         </main>
@@ -423,16 +495,16 @@
     </div>
 
     <!-- Scripts -->
-    <script src="js/calculator.js"></script>
-    <script src="js/benefits.js"></script>
-    <script src="js/presets.js"></script>
-    <script src="js/chart.js"></script>
-    <script src="js/ui-state.js"></script>
-    <script src="js/children.js"></script>
-    <script src="js/url-handler.js"></script>
-    <script src="js/form.js"></script>
-    <script src="js/recommendations.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/calculator.js?v=20260430-ui9"></script>
+    <script src="js/benefits.js?v=20260430-ui9"></script>
+    <script src="js/presets.js?v=20260430-ui9"></script>
+    <script src="js/chart.js?v=20260430-ui9"></script>
+    <script src="js/ui-state.js?v=20260430-ui9"></script>
+    <script src="js/children.js?v=20260430-ui9"></script>
+    <script src="js/url-handler.js?v=20260430-ui9"></script>
+    <script src="js/form.js?v=20260430-ui9"></script>
+    <script src="js/recommendations.js?v=20260430-ui9"></script>
+    <script src="js/app.js?v=20260430-ui9"></script>
 </body>
 
 </html>
