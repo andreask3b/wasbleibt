@@ -27,8 +27,8 @@ const TaxCalculator = {
         health: 0.0387,          // Krankenversicherung (3,87%)
         pension: 0.1025,         // Pensionsversicherung (10,25%)
         unemployment: 0.0295,    // Arbeitslosenversicherung Standard (2,95%)
-        other: 0.01,             // Wohnbauförderung (0,5%) + AK-Umlage (0,5%)
-        maxMonthlyBase: 6450,    // Höchstbeitragsgrundlage 2025
+        other: 0.0125,           // Umlagen nur auf den laufenden Bezug (AK-Umlage, Wohnbauförderungsbeitrag u. a.); kalibriert am AK-Brutto-Netto-Rechner 2025
+        maxMonthlyBase: 6930,    // Höchstbeitragsgrundlage 2025 (monatlich)
         minMonthlyBase: 1500     // Mindestbeitragsgrundlage 2025 (nicht verwendet)
     },
 
@@ -152,8 +152,11 @@ const TaxCalculator = {
 
         // === Sonderzahlungen (13th + 14th salary) ===
         // These are taxed at a flat 6% rate (Jahressechstel-Begünstigung)
+        // SV auf Sonderzahlungen ohne Umlagen (other): AK-Umlage und
+        // Wohnbauförderungsbeitrag fallen nur auf den laufenden Bezug an.
+        const sonderzahlungenSSMonthly = socialSecurity.health + socialSecurity.pension + socialSecurity.unemployment;
         const sonderzahlungenGross = monthlyGross * 2;
-        const sonderzahlungenSS = socialSecurity.total * 2;
+        const sonderzahlungenSS = sonderzahlungenSSMonthly * 2;
         const sonderzahlungenTaxable = sonderzahlungenGross - sonderzahlungenSS;
 
         // 6% flat tax on Sonderzahlungen (with Freibetrag)
@@ -175,18 +178,33 @@ const TaxCalculator = {
         // Net income (monthly average)
         const monthlyNet = monthlyGross - socialSecurity.total - monthlyTax;
 
+        // Laufender Bezug: echte monatliche Lohnsteuer und Netto wie auf der
+        // Lohnabrechnung. Absetzbeträge werden nur gegen die laufende Steuer
+        // verrechnet; nicht aufgezehrte Beträge fließen nicht in die
+        // Sonderzahlungs-Versteuerung über.
+        const regularTaxAfterCredits = Math.max(
+            0,
+            regularTax - this.TAX_CREDITS.verkehrsabsetzbetrag - additionalCredits
+        );
+        const monthlyTaxLaufend = regularTaxAfterCredits / 12;
+        const netLaufend = Math.max(0, monthlyGross - socialSecurity.total - monthlyTaxLaufend);
+
         // Annual totals
         const annualGross = monthlyGross * 14;
-        const annualSocialSecurity = socialSecurity.total * 14;
+        // 12 laufende Bezüge (inkl. Umlagen) + 2 Sonderzahlungen (ohne Umlagen)
+        const annualSocialSecurity = socialSecurity.total * 12 + sonderzahlungenSS;
 
         return {
             gross: monthlyGross,
             annualGross: annualGross,
             socialSecurity: socialSecurity,
+            annualSocialSecurity: annualSocialSecurity,
             monthlyTax: monthlyTax,
+            monthlyTaxLaufend: monthlyTaxLaufend,
             annualTax: annualTax,
             taxCredits: additionalCredits,
             net: Math.max(0, monthlyNet),
+            netLaufend: netLaufend,
             effectiveTaxRate: annualGross > 0 ? (annualTax / annualGross) * 100 : 0,
             effectiveTotalRate: annualGross > 0 ?
                 ((annualTax + annualSocialSecurity) / annualGross) * 100 : 0
