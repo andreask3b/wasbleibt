@@ -101,8 +101,8 @@
 }
 
 .info-note {
-    background: rgba(29, 155, 240, 0.08);
-    border: 1px solid rgba(29, 155, 240, 0.2);
+    background: var(--accent-soft);
+    border: 1px solid var(--border-color);
     border-radius: var(--radius-md);
     padding: var(--spacing-md) var(--spacing-lg);
     font-size: var(--font-size-sm);
@@ -111,8 +111,8 @@
 }
 
 .info-note.warning {
-    background: rgba(245, 158, 11, 0.1);
-    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(217, 138, 4, 0.08);
+    border-color: rgba(217, 138, 4, 0.28);
 }
 
 .info-note strong {

@@ -24,7 +24,7 @@
         content="Berechnen Sie Ihr tatsächliches Haushaltseinkommen in Österreich inkl. aller Sozialleistungen.">
     <meta name="twitter:image" content="https://was-bleibt.at/og-image.png">
 
-    <link rel="stylesheet" href="css/main.css?v=20260507-ui10">
+    <link rel="stylesheet" href="css/main.css?v=20260514-ui11">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
@@ -32,11 +32,13 @@
     <div class="app-container">
         <!-- Header -->
         <header class="header">
-            <div class="logo">
-                <h1>was-bleibt.at</h1>
+            <div class="header-bar">
+                <div class="logo">
+                    <h1>was-bleibt.at</h1>
+                </div>
+                <p class="data-year-badge" id="dataYearBadge">Rechenstand 2025</p>
             </div>
             <p class="tagline">Ihr tatsächliches Haushaltseinkommen in Österreich</p>
-            <p class="data-year-badge" id="dataYearBadge">Rechenstand 2025</p>
         </header>
 
         <!-- Sticky Result Bar (appears on scroll) -->
@@ -67,85 +69,10 @@
 
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Result Hero -->
-            <section class="result-hero glass-card" aria-labelledby="resultHeroTitle">
-                <div class="result-hero-main">
-                    <div class="result-hero-copy">
-                        <p class="eyebrow">Aktuelles Szenario</p>
-                        <h2 id="resultHeroTitle">Was bleibt wirklich?</h2>
-                        <p>Der Betrag, der nach Einkommen, Transfers, Wohnen und Betreuung wirklich frei verfügbar ist.</p>
-                    </div>
-                    <div class="result-hero-value" aria-live="polite" aria-atomic="true">
-                        <span class="hero-value-label">Was bleibt</span>
-                        <span class="hero-value-number" id="disposableIncome">€ 0</span>
-                        <span class="hero-value-detail">frei verfügbar pro Monat</span>
-                    </div>
-                </div>
+            <div class="workspace">
 
-                <div class="hero-formula" aria-label="Berechnungslogik">
-                    <span>Netto</span>
-                    <strong>+</strong>
-                    <span>Transfers</span>
-                    <strong>−</strong>
-                    <span>Wohnen</span>
-                    <strong>−</strong>
-                    <span>Betreuung</span>
-                    <strong>=</strong>
-                    <span>Was bleibt</span>
-                </div>
-
-                <div class="result-hero-actions">
-                    <button class="share-primary-btn" id="heroShareBtn" type="button"
-                        aria-label="Aktuelles Szenario als Link teilen">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" aria-hidden="true">
-                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
-                            <polyline points="16,6 12,2 8,6" />
-                            <line x1="12" y1="2" x2="12" y2="15" />
-                        </svg>
-                        <span>Szenario teilen</span>
-                    </button>
-                    <a class="btn-secondary hero-edit-link" href="#inputSection">Situation anpassen</a>
-                    <span class="share-status" id="shareStatus" role="status" aria-live="polite"></span>
-                    <input class="share-url-field" id="shareUrlField" type="text" readonly hidden
-                        aria-label="Teilbarer Szenario-Link">
-                </div>
-
-                <div class="result-metrics" aria-label="Zusammenfassung">
-                    <div class="result-metric">
-                        <span class="metric-label">Haushaltskasse</span>
-                        <span class="metric-value" id="totalHousehold">€ 0</span>
-                        <span class="metric-detail">Netto, Steuerentlastung und Transfers</span>
-                    </div>
-                    <div class="result-metric">
-                        <span class="metric-label">Netto &amp; Gutschriften</span>
-                        <span class="metric-value" id="netIncome">€ 0</span>
-                        <span class="metric-detail">Arbeitseinkommen nach Abgaben</span>
-                    </div>
-                    <div class="result-metric">
-                        <span class="metric-label">Transfers</span>
-                        <span class="metric-value benefits" id="totalBenefits">€ 0</span>
-                        <span class="metric-detail">Familie, Sozialhilfe, Wohnen</span>
-                    </div>
-                </div>
-            </section>
-
-            <details class="trust-strip">
-                <summary>
-                    <span>Schätzung mit offiziellen 2025-Regeln</span>
-                    <span>Quellen & Details</span>
-                </summary>
-                <p>
-                    Diese Berechnung dient zur Orientierung. Tatsächliche Leistungen können abweichen und müssen
-                    offiziell beantragt werden.
-                    <a href="berechnungen.html">Berechnungsmethoden</a>
-                    <a href="armutsfalle.html">Armutsfalle</a>
-                    <a href="#references">Quellen</a>
-                </p>
-            </details>
-
-            <div class="home-workspace">
-
+            <!-- Eingaben-Spalte (sticky) -->
+            <div class="input-rail">
             <!-- Input Section -->
             <section class="input-section glass-card" id="inputSection">
                 <div class="section-heading">
@@ -384,8 +311,87 @@
                     </div>
                 </div>
             </section>
+            </div>
 
-            <div class="insight-stack">
+            <!-- Ergebnis-Strang (scrollt) -->
+            <div class="results-rail">
+            <!-- Result Hero -->
+            <section class="result-hero glass-card" aria-labelledby="resultHeroTitle">
+                <div class="result-hero-main">
+                    <div class="result-hero-copy">
+                        <p class="eyebrow">Aktuelles Szenario</p>
+                        <h2 id="resultHeroTitle">Was bleibt wirklich?</h2>
+                        <p>Der Betrag, der nach Einkommen, Transfers, Wohnen und Betreuung wirklich frei verfügbar ist.</p>
+                    </div>
+                    <div class="result-hero-value" aria-live="polite" aria-atomic="true">
+                        <span class="hero-value-label">Was bleibt</span>
+                        <span class="hero-value-number" id="disposableIncome">€ 0</span>
+                        <span class="hero-value-detail">frei verfügbar pro Monat</span>
+                    </div>
+                </div>
+
+                <div class="hero-formula" aria-label="Berechnungslogik">
+                    <span>Netto</span>
+                    <strong>+</strong>
+                    <span>Transfers</span>
+                    <strong>−</strong>
+                    <span>Wohnen</span>
+                    <strong>−</strong>
+                    <span>Betreuung</span>
+                    <strong>=</strong>
+                    <span>Was bleibt</span>
+                </div>
+
+                <div class="result-hero-actions">
+                    <button class="share-primary-btn" id="heroShareBtn" type="button"
+                        aria-label="Aktuelles Szenario als Link teilen">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" aria-hidden="true">
+                            <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+                            <polyline points="16,6 12,2 8,6" />
+                            <line x1="12" y1="2" x2="12" y2="15" />
+                        </svg>
+                        <span>Szenario teilen</span>
+                    </button>
+                    <a class="btn-secondary hero-edit-link" href="#inputSection">Situation anpassen</a>
+                    <span class="share-status" id="shareStatus" role="status" aria-live="polite"></span>
+                    <input class="share-url-field" id="shareUrlField" type="text" readonly hidden
+                        aria-label="Teilbarer Szenario-Link">
+                </div>
+
+                <div class="result-metrics" aria-label="Zusammenfassung">
+                    <div class="result-metric">
+                        <span class="metric-label">Haushaltskasse</span>
+                        <span class="metric-value" id="totalHousehold">€ 0</span>
+                        <span class="metric-detail">Netto, Steuerentlastung und Transfers</span>
+                    </div>
+                    <div class="result-metric">
+                        <span class="metric-label">Netto &amp; Gutschriften</span>
+                        <span class="metric-value" id="netIncome">€ 0</span>
+                        <span class="metric-detail">Arbeitseinkommen nach Abgaben</span>
+                    </div>
+                    <div class="result-metric">
+                        <span class="metric-label">Transfers</span>
+                        <span class="metric-value benefits" id="totalBenefits">€ 0</span>
+                        <span class="metric-detail">Familie, Sozialhilfe, Wohnen</span>
+                    </div>
+                </div>
+            </section>
+
+            <details class="trust-strip">
+                <summary>
+                    <span>Schätzung mit offiziellen 2025-Regeln</span>
+                    <span>Quellen & Details</span>
+                </summary>
+                <p>
+                    Diese Berechnung dient zur Orientierung. Tatsächliche Leistungen können abweichen und müssen
+                    offiziell beantragt werden.
+                    <a href="berechnungen.html">Berechnungsmethoden</a>
+                    <a href="armutsfalle.html">Armutsfalle</a>
+                    <a href="#references">Quellen</a>
+                </p>
+            </details>
+
             <!-- Chart Section -->
             <section class="chart-hero-section glass-card" id="chartSection">
                 <div class="section-heading">
@@ -423,11 +429,9 @@
                 </div>
 
             </section>
-            </div>
-            </div>
 
             <!-- Recommendations -->
-            <section class="recommendations-section recommendations-section--wide glass-card" id="recommendationsSection">
+            <section class="recommendations-section glass-card" id="recommendationsSection">
                 <div class="section-heading">
                     <p class="eyebrow">Mehrverdienst</p>
                     <h2>Arbeit und Mehrverdienst</h2>
@@ -438,7 +442,9 @@
                 </div>
                 <div class="recommendations-content" id="recommendationsContent"></div>
             </section>
+            </div>
 
+            </div>
         </main>
 
         <!-- References Section -->
