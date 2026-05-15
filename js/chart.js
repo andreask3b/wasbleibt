@@ -33,18 +33,20 @@ const ChartManager = {
             const taxResult = TaxCalculator.calculateMonthlyNet(gross);
             let partnerTaxResult = null;
             let partnerNetIncome = 0;
-            let combinedMonthlyNet = taxResult.net;
+            // Monatsansicht: echtes laufendes Netto wie auf der Lohnabrechnung
+            // (Sonderzahlungs-Steuer wird nicht in die 12 Monate verschmiert).
+            let combinedMonthlyNet = taxResult.netLaufend;
 
             if (situation.familyStatus === 'married' && situation.partnerIncome > 0) {
                 partnerTaxResult = TaxCalculator.calculateMonthlyNet(situation.partnerIncome);
-                partnerNetIncome = partnerTaxResult.net;
-                combinedMonthlyNet = taxResult.net + partnerTaxResult.net;
+                partnerNetIncome = partnerTaxResult.netLaufend;
+                combinedMonthlyNet = taxResult.netLaufend + partnerTaxResult.netLaufend;
             }
 
             const benefits = BenefitsCalculator.calculateAllBenefits({
                 ...situation,
                 monthlyGross: gross,
-                monthlyNet: taxResult.net,
+                monthlyNet: taxResult.netLaufend,
                 partnerNetIncome,
                 combinedMonthlyNet,
                 annualTax: taxResult.annualTax
@@ -74,7 +76,7 @@ const ChartManager = {
         if (!taxResult) return 0;
 
         const annualGross = taxResult.annualGross || ((taxResult.gross || 0) * 14);
-        const annualSocialSecurity = (taxResult.socialSecurity?.total || 0) * 14;
+        const annualSocialSecurity = taxResult.annualSocialSecurity ?? ((taxResult.socialSecurity?.total || 0) * 14);
         return Math.max(0, annualGross - annualSocialSecurity - (taxResult.annualTax || 0));
     },
 
