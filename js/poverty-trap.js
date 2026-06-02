@@ -76,7 +76,7 @@ const PovertyTrapPage = {
                     label: `${hours} Std.`,
                     hours,
                     gross: income.monthlyGross14,
-                    netIncome: result.taxResult.net,
+                    netIncome: result.taxResult.netLaufend,
                     sozialhilfe: result.benefits.sozialhilfe.amount,
                     wohnbeihilfe: result.benefits.wohnbeihilfe.amount,
                     disposableIncome: result.benefits.disposableIncome,
@@ -93,8 +93,8 @@ const PovertyTrapPage = {
         const taxResult = TaxCalculator.calculateMonthlyNet(values.monthlyGross || 0);
         const benefits = BenefitsCalculator.calculateAllBenefits({
             ...values,
-            monthlyNet: taxResult.net,
-            combinedMonthlyNet: taxResult.net,
+            monthlyNet: taxResult.netLaufend,
+            combinedMonthlyNet: taxResult.netLaufend,
             partnerNetIncome: 0,
             annualTax: taxResult.annualTax
         });

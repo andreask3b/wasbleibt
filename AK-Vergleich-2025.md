@@ -1,6 +1,6 @@
 # Verifikation: was-bleibt.at Brutto-Netto vs. AK-Brutto-Netto-Rechner
 
-**Datum:** 2026-05-14
+**Datum:** 2026-05-14 (Verifikation & SV-Fixes), 2026-05-15 (laufendes Netto app-weit)
 **Geprüfte Logik:** `js/calculator.js` → `TaxCalculator.calculateMonthlyNet()`
 **Referenz:** Brutto-Netto-Rechner der Arbeiterkammern (bruttonetto.arbeiterkammer.at), Rechenstand 2025
 **Methodik:** Lokaler Server (`http://localhost:8765`), App-Werte direkt aus dem `TaxCalculator`-Objekt im Browser ausgelesen. AK-Werte manuell aus dem Live-Rechner entnommen.
@@ -14,7 +14,7 @@
 | 1 — Höchstbeitragsgrundlage veraltet (6.450 → 6.930 €/Monat) | Hoch | **Korrigiert** ✓ |
 | 2 — SV-Satz laufend 0,25 Pp zu niedrig (18,07 % → 18,32 %) | Mittel | **Korrigiert** ✓ |
 | 3 — SV auf Sonderzahlungen falsch (Umlagen fälschlich abgezogen) | Mittel | **Korrigiert** ✓ |
-| 4 — Anzeigewert „Netto/Monat" konzeptionell inkonsistent | Konzeptionell | **Offen** — Produktentscheidung nötig (s. Abschnitt 5) |
+| 4 — Anzeigewert „Netto/Monat" konzeptionell inkonsistent | Konzeptionell | **Korrigiert** ✓ — app-weit auf echtes laufendes Netto umgestellt (s. Abschnitt 5) |
 | Rest — Lohnsteuer-Annäherung (App bildet Monatstabelle nicht exakt nach) | Gering | **Offen** — bekannte Vereinfachung (s. Abschnitt 4) |
 
 Nach den Korrekturen 1–3 stimmt die **Sozialversicherung exakt mit dem AK-Rechner überein** (0,00 € Abweichung auf allen 6 Testfällen, laufend wie im Jahr). Die verbleibende Jahresnetto-Abweichung von **−0,5 % bis +0,6 %** stammt vollständig aus der vereinfachten Lohnsteuer-Berechnung.
@@ -121,19 +121,23 @@ Die Abweichung liegt unter 0,6 % des Jahresnettos und wurde nicht als Bug, sonde
 
 ---
 
-## 5. Offen: Anzeigewert „Netto/Monat" (Produktentscheidung nötig)
+## 5. Korrigiert: Anzeigewert „Netto/Monat" → echtes laufendes Netto (Variante A)
 
-`calculateMonthlyNet` liefert `net = monthlyGross − socialSecurity.total − annualTax/12`. Das ist ein Mischwert: Die Jahressteuer (für 14 Bezüge) wird durch 12 geteilt und von einem einzelnen der 14 Bezüge abgezogen. Folgen:
+**Ausgangslage:** `calculateMonthlyNet` lieferte als `net` einen Mischwert (`monthlyGross − socialSecurity.total − annualTax/12`): Die Jahressteuer für 14 Bezüge wurde durch 12 geteilt und von einem einzelnen Bezug abgezogen. Dadurch war `net × 14 ≠` Jahresnetto, und der Wert war weder echtes Monatsnetto noch sauberer Jahresdurchschnitt.
 
-- `net × 14 ≠` rekonstruiertes Jahresnetto (bei 2.700 €: 1.966,99 × 14 = 27.537,86 € statt 28.082,05 €).
-- Der Wert ist weder das echte Monatsnetto des laufenden Bezugs (AK: 1.997,30 €) noch ein sauberer Jahresdurchschnitt (28.082,05 / 12 = 2.340,17 €).
+**Umsetzung (Variante A — echtes Monatsnetto des laufenden Bezugs):** `calculateMonthlyNet` liefert nun zusätzlich `netLaufend` und `monthlyTaxLaufend`. Das laufende Netto bildet die Lohnabrechnung ab: `netLaufend = monthlyGross − socialSecurity.total − (regularTax − Verkehrsabsetzbetrag − weitere Absetzbeträge)/12`. Die Sonderzahlungs-Steuer wird **nicht** mehr in die 12 Monate verschmiert; Absetzbeträge werden nur gegen den laufenden Bezug verrechnet.
 
-Dieser Befund wurde **bewusst nicht** im Alleingang geändert: Eine Korrektur ändert die Bedeutung des angezeigten „Netto"-Werts und greift in die Breakdown-Tabelle (`form.js`) und den Chart (`chart.js`) ein — Bereiche, an denen parallel an der UI gearbeitet wird. Es braucht zuerst eine Festlegung, was „Netto/Monat" in der App bedeuten soll:
+Die gesamte App-Anzeige wurde auf `netLaufend` umgestellt — damit ist sichergestellt, dass Hero, Breakdown, Chart und Empfehlungen denselben Wert verwenden:
 
-- **Variante A:** echtes Monatsnetto des laufenden Bezugs (×12), Sonderzahlungen separat ausweisen — entspricht der Lohnabrechnung.
-- **Variante B:** sauberer Jahresdurchschnitt (Jahresnetto / 12) — entspricht „was bleibt pro Monat" über das ganze Jahr.
+- **Chart Monatsansicht** (`chart.js`) — Nettoeinkommen-Linie, Bedarfsprüfungen und „Was bleibt".
+- **Chart Jahresansicht** (`chart.js`) — unverändert volles Jahresnetto inkl. 13./14. Bezug (`Brutto×14 − annualSocialSecurity − annualTax`).
+- **Hero & Breakdown-Tabelle** (`form.js`) — „Was bleibt", „Netto & Steuergutschriften", Lohnsteuer-Zeile (`monthlyTaxLaufend`).
+- **Empfehlungen** (`recommendations.js`) — Wiedereinsteiger-Delta auf gleicher Basis wie das angezeigte „Was bleibt".
+- **Armutsfalle-Seite** (`poverty-trap.js`) — Szenario-Netto und disposable income.
 
-Empfehlung: mit der UI-Arbeit abstimmen und dann konsistent in `calculator.js`, `form.js` (Breakdown) und `chart.js` umsetzen.
+**Verifikation im Browser:** Hero „Was bleibt" stimmt jetzt am Eingabe-Marker exakt mit der Chart-„Was bleibt"-Linie überein (4 Szenarien getestet: Single, Alleinerziehend mit 2 Kindern, Paar mit Partnereinkommen, Hochverdiener — alle Abweichung ≤ 1 €, keine JS-Fehler). Breakdown-Arithmetik konsistent: z. B. 2.700 € − SV 495 € − Lohnsteuer (laufend) 219 € = 1.986 € Netto. Jahresansicht zeigt unverändert die vollen Jahreswerte (z. B. Gesamtbrutto 38.000 €/Jahr → Jahresnetto 28.202 €).
+
+**Hinweis:** Das echte laufende Netto liegt minimal unter dem AK-Wert „Netto laufend" (bei 2.700 €: App 1.986 € vs. AK 1.997 €) — die Differenz von ~11 € stammt aus der vereinfachten Lohnsteuer-Annäherung (Abschnitt 4), nicht aus der Netto-Definition.
 
 ---
 
@@ -141,14 +145,18 @@ Empfehlung: mit der UI-Arbeit abstimmen und dann konsistent in `calculator.js`, 
 
 ### App nach Korrektur (`TaxCalculator.calculateMonthlyNet`, im Browser ausgelesen)
 
-| Brutto/Mt. | SV laufend | SV/Jahr | Steuer/Jahr | `net` (Anzeige) | Jahresnetto |
-|-----------:|-----------:|--------:|------------:|----------------:|------------:|
-| 1.500 | 230,55 | 3.190,20 | 15,46 | 1.268,16 | 17.794,34 |
-| 2.000 | 307,40 | 4.253,60 | 1.082,55 | 1.602,39 | 22.663,85 |
-| 2.700 | 494,64 | 6.857,46 | 2.860,49 | 1.966,99 | 28.082,05 |
-| 3.500 | 641,20 | 8.889,30 | 5.292,49 | 2.417,76 | 34.818,21 |
-| 5.000 | 916,00 | 12.699,00 | 11.169,68 | 3.153,19 | 46.131,32 |
-| 7.000 | 1.269,58 | 17.600,81 | 19.272,98 | 4.124,34 | 61.126,20 |
+`netLaufend` ist der app-weit angezeigte Wert (laufendes Monatsnetto); `Steuer/Jahr` und `Jahresnetto` enthalten zusätzlich die Sonderzahlungen (13./14.).
+
+| Brutto/Mt. | SV laufend | SV/Jahr | LSt laufend/Mt. | netLaufend (Anzeige) | Steuer/Jahr | Jahresnetto |
+|-----------:|-----------:|--------:|----------------:|---------------------:|------------:|------------:|
+| 1.500 | 230,55 | 3.190,20 | 0,00 | 1.269,45 | 15,46 | 17.794,34 |
+| 2.000 | 307,40 | 4.253,60 | 76,14 | 1.616,46 | 1.082,55 | 22.663,85 |
+| 2.700 | 494,64 | 6.857,46 | 219,08 | 1.986,28 | 2.860,49 | 28.082,05 |
+| 3.500 | 641,20 | 8.889,30 | 415,11 | 2.443,69 | 5.292,49 | 34.818,21 |
+| 5.000 | 916,00 | 12.699,00 | 892,44 | 3.191,56 | 11.169,68 | 46.131,32 |
+| 7.000 | 1.269,58 | 17.600,81 | 1.551,01 | 4.179,41 | 19.272,98 | 61.126,20 |
+
+> Vergleich laufendes Netto App vs. AK: 1.500 € → 1.269,45 (exakt AK), 2.700 € → 1.986,28 (AK 1.997,30; −11 €), 5.000 € → 3.191,56 (AK 3.208,87; −17 €). Restdifferenz = Lohnsteuer-Annäherung (Abschnitt 4).
 
 ### AK-Brutto-Netto-Rechner (laufender Bezug + Jahresbezug)
 
@@ -176,13 +184,17 @@ Empfehlung: mit der UI-Arbeit abstimmen und dann konsistent in `calculator.js`, 
 
 ## 7. Geänderte Dateien
 
-- `js/calculator.js` — `SOCIAL_SECURITY.maxMonthlyBase` 6450→6930; `SOCIAL_SECURITY.other` 0.01→0.0125; Sonderzahlungs-SV ohne Umlagen; `annualSocialSecurity` korrekt berechnet und im Rückgabeobjekt ergänzt.
-- `js/chart.js` — `calculateAnnualNet` nutzt `taxResult.annualSocialSecurity` statt `socialSecurity.total * 14`.
-- `index.html` — Cache-Version von `calculator.js` auf `?v=20260514-fix` gesetzt.
+- `js/calculator.js` — `SOCIAL_SECURITY.maxMonthlyBase` 6450→6930; `SOCIAL_SECURITY.other` 0.01→0.0125; Sonderzahlungs-SV ohne Umlagen; `annualSocialSecurity` korrekt berechnet; neue Felder `netLaufend` und `monthlyTaxLaufend` (echtes laufendes Netto).
+- `js/chart.js` — Monatsansicht nutzt `netLaufend`; `calculateAnnualNet` nutzt `taxResult.annualSocialSecurity` statt `socialSecurity.total * 14`.
+- `js/form.js` — Hero und Breakdown nutzen `netLaufend`; Lohnsteuer-Zeile nutzt `monthlyTaxLaufend`.
+- `js/recommendations.js` — Wiedereinsteiger-Delta (`calculateReentryDelta`) nutzt `netLaufend`.
+- `js/poverty-trap.js` — Szenario-Berechnung (Armutsfalle-Seite) nutzt `netLaufend`.
+- `index.html` — Cache-Versionen `?v=20260515-laufend` für `calculator.js`, `chart.js`, `form.js`, `recommendations.js`.
+- `armutsfalle.html` — Cache-Versionen `?v=20260515-laufend` für `calculator.js` und `poverty-trap.js` (zuvor `ui3` — SV-Fix war dort noch nicht aktiv).
 
 ## 8. Hinweise
 
 - Getestet wurde **nur der Brutto-Netto-Kern**. Familienbeihilfe, Wohnbeihilfe, Sozialhilfe und die übrigen Transfers (`benefits.js`) sind **nicht** Teil dieses Vergleichs.
 - Die ALV-Staffelung für Geringverdiener (`ALV_GRADUATED_RATES`) stimmt mit der AK überein.
 - Browser-Automatisierung gegen den AK-Rechner war wegen Domain-Sperren der Chrome-Extension nicht möglich; die AK-Werte wurden manuell aus dem Live-Rechner übernommen.
-- Verifikation der korrigierten App: Werte im Browser aus dem geladenen `TaxCalculator` ausgelesen; App-UI (Hero, Breakdown-Tabelle, Chart, Empfehlungen) rendert mit dem korrigierten Code fehlerfrei.
+- Verifikation der korrigierten App: Werte im Browser aus dem geladenen `TaxCalculator` ausgelesen; App-UI (Hero, Breakdown-Tabelle, Chart, Empfehlungen) und die Armutsfalle-Seite rendern mit dem korrigierten Code fehlerfrei. Konsistenz Hero ↔ Chart am Eingabe-Marker über 4 Szenarien geprüft (Abweichung ≤ 1 €).
