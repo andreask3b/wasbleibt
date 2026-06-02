@@ -329,7 +329,13 @@ const BenefitsCalculator = {
         let maxEntitlement = numAdults === 1 ? sh.single : sh.couple;
         maxEntitlement += numChildren * sh.childSupplement;
 
-        const withHousing = maxEntitlement * (1 + sh.housingSupplementRate);
+        // Wohnkostenanteil: Lebensunterhalts-Mindeststandard PLUS bis zu 30% für
+        // den Wohnbedarf (Sozialhilfe-Grundsatzgesetz). Der Zuschlag ist auf die
+        // TATSÄCHLICHE Miete gedeckelt — bei niedriger Miete gibt es nicht den
+        // vollen 30%-Aufschlag.
+        const maxHousingSupplement = maxEntitlement * sh.housingSupplementRate;
+        const housingSupplement = Math.min(monthlyRent || 0, maxHousingSupplement);
+        const withHousing = maxEntitlement + housingSupplement;
 
         const freibetragRate = wiedereinsteiger ? 0.35 : 0;
         const exemptIncome = monthlyNetIncome * freibetragRate;
@@ -338,15 +344,14 @@ const BenefitsCalculator = {
         // als Einkommen anzurechnen (§7 Sozialhilfe-Grundsatzgesetz). Der Bedarf
         // der Kinder ist bereits über den Kinderrichtsatz (childSupplement) gedeckt.
         const totalIncome = countableIncome;
-        // Use withHousing entitlement if person has rent/housing costs (up to 30% more)
-        // Source: §8 Sozialhilfe-Grundsatzgesetz
-        const effectiveEntitlement = (monthlyRent > 0) ? withHousing : maxEntitlement;
+        const effectiveEntitlement = withHousing;
         const benefit = Math.max(0, effectiveEntitlement - totalIncome);
 
         return {
             eligible: benefit > 0,
             amount: Math.round(benefit * 100) / 100,
-            maxEntitlement, withHousing, existingIncome: totalIncome, wiedereinsteiger, freibetrag: exemptIncome
+            maxEntitlement, withHousing, housingSupplement, maxHousingSupplement,
+            existingIncome: totalIncome, wiedereinsteiger, freibetrag: exemptIncome
         };
     },
 

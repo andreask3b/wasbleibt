@@ -47,11 +47,13 @@
     },
     "sozialhilfe": {
         "_source": "https://www.oesterreich.gv.at/themen/soziales/armut/2/Seite.1693914.html",
-        "_note": "Bundesweite Richtsätze gemäß Sozialhilfe-Grundsatzgesetz, Länder können abweichen",
+        "_note": "Modelliert nach Wien/bundesweitem Sozialhilfe-Grundsatzgesetz 2025. Länder können abweichen (andere Länder rechnen Kinder teils degressiv).",
         "single": 1209,
         "couple": 1693,
         "childSupplement": 326.43,
-        "housingSupplementRate": 0.30
+        "_childSupplementNote": "Wien 2025: flacher Satz je minderjährigem Kind (2026 = 332,07). Wien staffelt Minderjährige NICHT degressiv.",
+        "housingSupplementRate": 0.30,
+        "_housingNote": "Wohnbedarf: bis zu 30% des Mindeststandards zusätzlich, in der Berechnung auf die tatsächliche Miete gedeckelt."
     },
     "wohnbeihilfe": {
         "vienna": {
