@@ -194,17 +194,19 @@ const FormManager = {
         const taxResult = TaxCalculator.calculateMonthlyNet(formData.monthlyGross);
 
         let partnerTaxResult = null;
-        let combinedMonthlyNet = taxResult.net;
+        // Anzeige (Hero + Breakdown): echtes laufendes Netto wie auf der
+        // Lohnabrechnung, konsistent mit der Chart-Monatsansicht.
+        let combinedMonthlyNet = taxResult.netLaufend;
 
         if (formData.familyStatus === 'married' && formData.partnerIncome > 0) {
             partnerTaxResult = TaxCalculator.calculateMonthlyNet(formData.partnerIncome);
-            combinedMonthlyNet = taxResult.net + partnerTaxResult.net;
+            combinedMonthlyNet = taxResult.netLaufend + partnerTaxResult.netLaufend;
         }
 
         const benefits = BenefitsCalculator.calculateAllBenefits({
             ...formData,
-            monthlyNet: taxResult.net,
-            partnerNetIncome: partnerTaxResult ? partnerTaxResult.net : 0,
+            monthlyNet: taxResult.netLaufend,
+            partnerNetIncome: partnerTaxResult ? partnerTaxResult.netLaufend : 0,
             combinedMonthlyNet,
             annualTax: taxResult.annualTax
         });
@@ -262,7 +264,7 @@ const FormManager = {
         });
         rows.push({
             label: hasPartner ? 'Lohnsteuer (Person 1)' : 'Lohnsteuer',
-            value: -taxResult.monthlyTax,
+            value: -taxResult.monthlyTaxLaufend,
             color: CLR.steuern,
             negative: true
         });
@@ -281,7 +283,7 @@ const FormManager = {
             });
             rows.push({
                 label: 'Lohnsteuer (Partner:in)',
-                value: -partnerTaxResult.monthlyTax,
+                value: -partnerTaxResult.monthlyTaxLaufend,
                 color: CLR.steuern,
                 negative: true
             });

@@ -158,17 +158,18 @@ const RecommendationsManager = {
         };
 
         let partnerNetIncome = 0;
-        let combinedMonthlyNet = taxResult.net;
+        // Konsistent mit Chart/Hero: laufendes Netto als Vergleichsbasis.
+        let combinedMonthlyNet = taxResult.netLaufend;
 
         if (formData.familyStatus === 'married' && formData.partnerIncome > 0) {
             const partnerTaxResult = TaxCalculator.calculateMonthlyNet(formData.partnerIncome);
-            partnerNetIncome = partnerTaxResult.net;
-            combinedMonthlyNet += partnerTaxResult.net;
+            partnerNetIncome = partnerTaxResult.netLaufend;
+            combinedMonthlyNet += partnerTaxResult.netLaufend;
         }
 
         const alternativeBenefits = BenefitsCalculator.calculateAllBenefits({
             ...toggledFormData,
-            monthlyNet: taxResult.net,
+            monthlyNet: taxResult.netLaufend,
             partnerNetIncome,
             combinedMonthlyNet,
             annualTax: taxResult.annualTax
