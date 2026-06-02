@@ -131,9 +131,12 @@ const BenefitsCalculator = {
         const usedBonus = Math.min(maxBonus, taxLiability);
         const remainingTax = Math.max(0, taxLiability - usedBonus);
         const unusedBonus = maxBonus - usedBonus;
-        // Kindermehrbetrag 2025: max. €700 TOTAL (not per child)
-        // Awarded when Familienbonus cannot be fully used (tax liability too low)
-        const kindermehrbetrag = Math.min(unusedBonus, this.KINDERMEHRBETRAG);
+        // Kindermehrbetrag 2025: max. €700 PRO KIND und Jahr (nicht gesamt).
+        // Wird gewährt, wenn der Familienbonus mangels Steuerlast nicht voll
+        // genutzt werden kann. Vereinfachtes Modell: aus ungenutztem Bonus
+        // abgeleitet, gedeckelt mit €700 je Kind.
+        const numChildren = childrenAges.length;
+        const kindermehrbetrag = Math.min(unusedBonus, this.KINDERMEHRBETRAG * numChildren);
 
         return {
             maxBonus: maxBonus,
@@ -331,7 +334,10 @@ const BenefitsCalculator = {
         const freibetragRate = wiedereinsteiger ? 0.35 : 0;
         const exemptIncome = monthlyNetIncome * freibetragRate;
         const countableIncome = monthlyNetIncome - exemptIncome;
-        const totalIncome = countableIncome + (familyBenefits || 0);
+        // Familienbeihilfe und Kinderabsetzbetrag sind in der Sozialhilfe NICHT
+        // als Einkommen anzurechnen (§7 Sozialhilfe-Grundsatzgesetz). Der Bedarf
+        // der Kinder ist bereits über den Kinderrichtsatz (childSupplement) gedeckt.
+        const totalIncome = countableIncome;
         // Use withHousing entitlement if person has rent/housing costs (up to 30% more)
         // Source: §8 Sozialhilfe-Grundsatzgesetz
         const effectiveEntitlement = (monthlyRent > 0) ? withHousing : maxEntitlement;
